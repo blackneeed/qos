@@ -1,0 +1,45 @@
+CFLAGS=-std=c11 -Wall -Wextra -ffreestanding -fno-stack-protector -fno-stack-check -fno-lto -m32 -mno-mmx -mno-sse -mno-sse2 -mno-red-zone -I src/kernel
+LDFLAGS=-nostdlib -m elf_i386 -static
+ASMFLAGS=-f elf32
+CSRC=$(shell find src -name *.c)
+COBJ=$(patsubst src/%.c,obj/%.c.o,$(CSRC))
+ASMSRC=$(shell find src -name *.asm)
+ASMOBJ=$(patsubst src/%.asm,obj/%.asm.o,$(ASMSRC))
+
+.PHONY: build
+build: dirs kernel inject_bootloader clean
+
+.PHONY: dirs
+dirs:
+	mkdir -p build obj
+
+obj/%.c.o: src/%.c
+	mkdir -p $(shell dirname '$@')
+	gcc $(CFLAGS) -c -o $@ $< 
+
+obj/%.asm.o: src/%.asm
+	mkdir -p $(shell dirname '$@')
+	nasm $(ASMFLAGS) -o $@ $<
+
+link_kernel:
+	ld $(LDFLAGS) -T linker.ld $(ASMOBJ) $(COBJ) -o build/QuickOS.elf
+
+.PHONY: kernel
+kernel: dirs $(COBJ) $(ASMOBJ) link_kernel
+
+.PHONY: inject_bootloader
+inject_bootloader:
+	mkdir -p build/iso
+	mkdir -p build/iso/boot
+	mkdir -p build/iso/boot/grub
+	cp grub.cfg build/iso/boot/grub/grub.cfg
+	cp build/QuickOS.elf build/iso/boot/QuickOS.elf
+	grub-mkrescue build/iso -o QuickOS.iso
+
+.PHONY: run
+run:
+	qemu-system-x86_64 -cdrom QuickOS.iso -boot d -d guest_errors,cpu_reset,int
+
+.PHONY:
+clean:
+	rm -rf build obj
