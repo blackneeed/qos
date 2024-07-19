@@ -1,6 +1,6 @@
-CFLAGS=-std=c11 -Wall -Wextra -ffreestanding -fno-stack-protector -fno-stack-check -fno-lto -m32 -mno-mmx -mno-sse -mno-sse2 -mno-red-zone -I src/kernel
+CFLAGS=-g -std=c11 -Wall -Wextra -ffreestanding -fno-stack-protector -fno-stack-check -fno-lto -m32 -mno-mmx -mno-sse -mno-sse2 -mno-red-zone -I src
 LDFLAGS=-nostdlib -m elf_i386 -static
-ASMFLAGS=-f elf32
+ASMFLAGS=-g -f elf32
 CSRC=$(shell find src -name *.c)
 COBJ=$(patsubst src/%.c,obj/%.c.o,$(CSRC))
 ASMSRC=$(shell find src -name *.asm)
