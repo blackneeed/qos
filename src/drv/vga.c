@@ -21,7 +21,7 @@ char* vga_get_char_ptr(vga_info* info, vga_pos pos)
 
 u8 vga_get_color_attr(vga_color color)
 {
-    return color.fg | (color.bg >> 4);
+    return color.fg | (color.bg << 4);
 }
 
 void vga_scroll_up(vga_info* info, vga_color color)
@@ -137,9 +137,9 @@ void vga_clear_line(vga_info* info, vga_color color, int y)
 void vga_clear(vga_info* info, vga_color color)
 {
     vga_pos pos;
-    for (; pos.x < info->size.w; pos.x++)
+    for (pos.x = 0; pos.x < info->size.w; pos.x++)
     {
-        for (; pos.y < info->size.h; pos.y++)
+        for (pos.y = 0; pos.y < info->size.h; pos.y++)
         {
             *vga_get_char_ptr(info, pos) = ' ';
             *vga_get_color_ptr(info, pos) = vga_get_color_attr(color);

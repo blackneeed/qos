@@ -4,26 +4,26 @@
 #define VGA_CRTC_ADDR 0x3D4
 #define VGA_CRTC_DATA 0x3D5
 
-typedef struct vga_size
+typedef struct
 {
     int w;
     int h;
 } vga_size;
 
-typedef struct vga_pos
+typedef struct
 {
     int x;
     int y;
 } vga_pos;
 
-typedef struct vga_info
+typedef struct
 {
     char* vmem;
     vga_size size;
     vga_pos pos;
 } vga_info;
 
-typedef struct vga_color
+typedef struct
 {
     enum { black, blue, green, cyan, red, magenta, brown, light_gray, dark_gray, light_blue, light_green, light_cyan, light_red, light_magenta, yellow, white } fg, bg;
 } vga_color;
