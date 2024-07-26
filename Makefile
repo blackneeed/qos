@@ -1,4 +1,4 @@
-CFLAGS=-g -std=c11 -Wall -Wextra -ffreestanding -fno-stack-protector -fno-stack-check -fno-lto -m32 -mno-mmx -mno-sse -mno-sse2 -mno-red-zone -I src
+CFLAGS=-g -std=c11 -Wall -Wextra -ffreestanding -fno-stack-protector -fno-stack-check -fno-lto -m32 -mno-mmx -mno-sse -mno-sse2 -mno-red-zone -mno-avx -mno-80387 -I src
 LDFLAGS=-nostdlib -m elf_i386 -static
 ASMFLAGS=-g -f elf32
 CSRC=$(shell find src -name *.c)
