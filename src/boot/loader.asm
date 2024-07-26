@@ -34,6 +34,7 @@ quickos_loader_after_cs_reload:
     mov ebp, stack
     mov esp, stack
 
+    cld
     call quickos_kernel_entry
 
     .halt:
