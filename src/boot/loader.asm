@@ -21,7 +21,6 @@ dd -(0x1BADB002 + ((1 << 1) | (1 << 0)))
 
 section .text
 quickos_loader_entry:
-    cli
     lgdt [gdt_descriptor]
     jmp 0x08:quickos_loader_after_cs_reload
 quickos_loader_after_cs_reload:
@@ -35,12 +34,8 @@ quickos_loader_after_cs_reload:
     mov esp, stack
 
     cld
-    jmp quickos_kernel_entry
-
     cli
-    .halt:
-    hlt
-    jmp .halt
+    jmp quickos_kernel_entry
 
 section .bss
 resb 4096

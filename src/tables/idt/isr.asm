@@ -3,16 +3,20 @@ bits 32
 %macro isr_err_stub 1
 isr_stub_%+%1:
     push dword %1
-    jmp isr_handler
-    iret 
+    jmp __isr_handler
 %endmacro
 
 %macro isr_no_err_stub 1
 isr_stub_%+%1:
     push dword %1
-    call isr_handler
-    iret
+    jmp __isr_handler
 %endmacro
+
+__isr_handler:
+    cld
+    call isr_handler
+    pop dword eax
+    iret
 
 extern isr_handler
 isr_no_err_stub 0

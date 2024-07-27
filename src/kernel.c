@@ -3,6 +3,12 @@
 #include <drv/pic.h>
 
 static vga_info* info;
+
+void quickos_kernel_loop()
+{
+    
+}
+
 void quickos_kernel_entry() 
 {
     vga_pos pos = {.x = 0, .y = 0};

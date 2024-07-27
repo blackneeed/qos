@@ -39,9 +39,6 @@ void isr_handler(u32 int_no, u32 eip)
     if (int_no < 32)
     {
         vga_write_str_line(info, error_color, exception_strings[int_no]);
-        vga_write_str(info, error_color, "At ");
-        vga_write_str_line(info, error_color, u32_to_str(eip));
-        for (;;) __asm__("hlt");
     } else 
     {
         vga_write_str_line(info, ok_color, "ISR called.");
