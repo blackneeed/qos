@@ -35,8 +35,9 @@ quickos_loader_after_cs_reload:
     mov esp, stack
 
     cld
-    call quickos_kernel_entry
+    jmp quickos_kernel_entry
 
+    cli
     .halt:
     hlt
     jmp .halt

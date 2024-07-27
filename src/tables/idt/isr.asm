@@ -3,7 +3,7 @@ bits 32
 %macro isr_err_stub 1
 isr_stub_%+%1:
     push dword %1
-    call isr_handler
+    jmp isr_handler
     iret 
 %endmacro
 

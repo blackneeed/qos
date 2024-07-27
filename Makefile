@@ -34,12 +34,13 @@ inject_bootloader:
 	mkdir -p build/iso/boot/grub
 	cp grub.cfg build/iso/boot/grub/grub.cfg
 	cp build/QuickOS.elf build/iso/boot/QuickOS.elf
+	cp build/QuickOS.elf QuickOS.elf 
 	grub-mkrescue build/iso -o QuickOS.iso
 
 .PHONY: run
 run:
 	qemu-system-x86_64 -cdrom QuickOS.iso -boot d -d guest_errors,cpu_reset,int
 
-.PHONY:
+.PHONY: clean
 clean:
 	rm -rf build obj

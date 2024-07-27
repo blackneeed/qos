@@ -1,4 +1,5 @@
 QuickOS.iso
+QuickOS.elf
 .vscode/*
 !.vscode/tasks.json
 # ignore my debug shit
