@@ -1,5 +1,5 @@
 #include <drv/vga.h>
-#include <tables/idt.h>
+#include <tables/idt/idt.h>
 #include <drv/pic.h>
 
 static vga_info* info;

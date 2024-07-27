@@ -1,5 +1,6 @@
 #include <drv/vga.h>
 #include <kernel_header.h>
+#include <conv.h>
 
 const char* exception_strings[32] = {
     "(#DE) Division Error",
@@ -31,13 +32,15 @@ const char* exception_strings[32] = {
     "(#--) Reserved"
 };
 
-void isr_handler(int int_no)
+void isr_handler(u32 int_no, u32 eip)
 {
     vga_color error_color = {.fg = light_red, .bg = black};
     vga_color ok_color = {.fg = light_cyan, .bg = black};
     if (int_no < 32)
     {
         vga_write_str_line(info, error_color, exception_strings[int_no]);
+        vga_write_str(info, error_color, "At ");
+        vga_write_str_line(info, error_color, u32_to_str(eip));
         for (;;) __asm__("hlt");
     } else 
     {
