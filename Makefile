@@ -7,7 +7,7 @@ ASMSRC=$(shell find src -name *.asm)
 ASMOBJ=$(patsubst src/%.asm,obj/%.asm.o,$(ASMSRC))
 
 .PHONY: build
-build: dirs kernel inject_bootloader clean
+build: kernel inject_bootloader clean
 
 .PHONY: dirs
 dirs:
@@ -21,14 +21,14 @@ obj/%.asm.o: src/%.asm
 	mkdir -p $(shell dirname '$@')
 	nasm $(ASMFLAGS) -o $@ $<
 
-link_kernel:
+link_kernel: $(COBJ) $(ASMOBJ)
 	ld $(LDFLAGS) -T linker.ld $(ASMOBJ) $(COBJ) -o build/QuickOS.elf
 
 .PHONY: kernel
 kernel: dirs $(COBJ) $(ASMOBJ) link_kernel
 
 .PHONY: inject_bootloader
-inject_bootloader:
+inject_bootloader: kernel
 	mkdir -p build/iso
 	mkdir -p build/iso/boot
 	mkdir -p build/iso/boot/grub
@@ -38,9 +38,9 @@ inject_bootloader:
 	grub-mkrescue build/iso -o QuickOS.iso
 
 .PHONY: run
-run:
+run: kernel inject_bootloader
 	qemu-system-x86_64 -cdrom QuickOS.iso -boot d -d guest_errors,cpu_reset,int
 
 .PHONY: clean
-clean:
+clean: kernel inject_bootloader
 	rm -rf build obj
