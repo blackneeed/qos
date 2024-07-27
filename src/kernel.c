@@ -1,4 +1,6 @@
 #include <drv/vga.h>
+#include <tables/idt.h>
+#include <drv/pic.h>
 
 static vga_info* info;
 void quickos_kernel_entry() 
@@ -9,4 +11,7 @@ void quickos_kernel_entry()
     vga_initialize(info, (char*)0xb8000, pos, size);
     vga_clear(info, color);
     vga_write_str_line(info, color, "Hello, world!");
+    pic_remap(0, 8);
+    idt_init();
+    for (;;) __asm__ ("hlt");
 }

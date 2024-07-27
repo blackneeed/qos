@@ -1,3 +1,7 @@
 QuickOS.iso
 .vscode/*
 !.vscode/tasks.json
+# ignore my debug shit
+bochs_cfg
+bochs_debug.bat
+bx_enh_dbg.ini

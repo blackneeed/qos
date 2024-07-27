@@ -1,5 +1,6 @@
 #include <types.h>
 #include <drv/ioport.h>
+#include "pic.h"
 
 void pic_send_eoi(u8 irq) {
     if (irq >= 8)
@@ -8,16 +9,16 @@ void pic_send_eoi(u8 irq) {
 }
 
 void pic_remap(int off1, int off2) {
-	u8 a1 = inb(PIC1_DATA);
-	u8 a2 = inb(PIC2_DATA);
+	u8 a1 = io_inb(PIC1_DATA);
+	u8 a2 = io_inb(PIC2_DATA);
 	
 	io_outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);  // starts the initialization sequence (in cascade mode)
 	io_wait();
 	io_outb(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);
 	io_wait();
-	io_outb(PIC1_DATA, offset1);                 // ICW2: Master PIC vector offset
+	io_outb(PIC1_DATA, off1);                 // ICW2: Master PIC vector offset
 	io_wait();
-	io_outb(PIC2_DATA, offset2);                 // ICW2: Slave PIC vector offset
+	io_outb(PIC2_DATA, off2);                 // ICW2: Slave PIC vector offset
 	io_wait();
 	io_outb(PIC1_DATA, 4);                       // ICW3: tell Master PIC that there is a slave PIC at IRQ2 (0000 0100)
 	io_wait();
