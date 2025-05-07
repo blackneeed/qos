@@ -19,5 +19,6 @@ void quickos_kernel_entry()
     vga_write_str_line(info, color, "Hello, world!");
     pic_remap(0, 8);
     idt_init();
-    for (;;) __asm__ volatile ("hlt");
+    
+    __asm__ volatile ("cli; hlt");
 }

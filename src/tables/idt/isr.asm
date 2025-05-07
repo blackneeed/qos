@@ -8,14 +8,16 @@ isr_stub_%+%1:
 
 %macro isr_no_err_stub 1
 isr_stub_%+%1:
+    push dword 0
     push dword %1
     jmp __isr_handler
 %endmacro
 
+section .text
+
 __isr_handler:
     cld
     call isr_handler
-    pop dword eax
     iret
 
 extern isr_handler
@@ -276,6 +278,7 @@ isr_no_err_stub 253
 isr_no_err_stub 254
 isr_no_err_stub 255
 
+section .rodata
 global isr_stub_table
 isr_stub_table:
 %assign i 0 

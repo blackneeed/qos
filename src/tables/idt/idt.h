@@ -16,5 +16,5 @@ typedef struct
     u32 base;
 } __attribute__((packed)) idtr_t;
 
-void idt_set_descriptor(u8 vector, void* isr, u8 flags);
+void idt_set_descriptor(u16 vector, void* isr, u8 flags);
 void idt_init();

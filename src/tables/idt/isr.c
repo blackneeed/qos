@@ -32,13 +32,14 @@ const char* exception_strings[32] = {
     "(#--) Reserved"
 };
 
-void isr_handler(u32 int_no, u32 eip)
+void isr_handler(u32 int_no, u32 err_code)
 {
     vga_color error_color = {.fg = light_red, .bg = black};
     vga_color ok_color = {.fg = light_cyan, .bg = black};
     if (int_no < 32)
     {
         vga_write_str_line(info, error_color, exception_strings[int_no]);
+        __asm__ volatile ("cli; hlt");
     } else 
     {
         vga_write_str_line(info, ok_color, "ISR called.");
