@@ -18,6 +18,7 @@ section .text
 __isr_handler:
     cld
     call isr_handler
+    add esp, 4
     iret
 
 extern isr_handler
