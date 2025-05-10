@@ -1,8 +1,9 @@
 #include <drv/vga.h>
+#include <drv/pic.h>
 #include <kernel_header.h>
 #include <conv.h>
 
-const char* exception_strings[32] = {
+const char* exception_strings[] = {
     "(#DE) Division Error",
     "(#DB) Debug",
     "(#--) Non-maskable Interrupt",
@@ -42,6 +43,10 @@ void isr_handler(u32 int_no, u32 err_code)
         __asm__ volatile ("cli; hlt");
     } else 
     {
-        vga_write_str_line(info, ok_color, "ISR called.");
+        if (int_no == 33)
+        {
+            vga_write_str_line(info, ok_color, "IRQ1 called.");
+            pic_send_eoi(1);
+        } else vga_write_str_line(info, ok_color, "ISR called.");
     }
 }

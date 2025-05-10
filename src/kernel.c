@@ -2,7 +2,8 @@
 #include <tables/idt/idt.h>
 #include <drv/pic.h>
 
-static vga_info* info;
+vga_info info_;
+vga_info* info = &info_;
 
 void quickos_kernel_loop()
 {
@@ -17,8 +18,15 @@ void quickos_kernel_entry()
     vga_initialize(info, (char*)0xb8000, pos, size);
     vga_clear(info, color);
     vga_write_str_line(info, color, "Hello, world!");
-    pic_remap(0, 8);
+    pic_remap(0x20, 0x28);
+    for (int i = 0; i < 8; i++) {
+        pic_mask(i);  // Mask IRQs for PIC1 (Master)
+        pic_mask(i + 8);  // Mask IRQs for PIC2 (Slave)
+    }
+    pic_unmask(1);
     idt_init();
+
+    for (;;) __asm__ volatile ("hlt");
     
-    __asm__ volatile ("cli; hlt");
+    //while (1) __asm__ volatile ("hlt");
 }

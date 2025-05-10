@@ -33,3 +33,31 @@ void pic_remap(int off1, int off2) {
 	io_outb(PIC1_DATA, a1);
 	io_outb(PIC2_DATA, a2);
 }
+
+void pic_mask(u8 irq) {
+    u16 port;
+    u8 value;
+
+    if(irq < 8) {
+        port = PIC1_DATA;
+    } else {
+        port = PIC2_DATA;
+        irq -= 8;
+    }
+    value = io_inb(port) | (1 << irq);
+    io_outb(port, value);        
+}
+
+void pic_unmask(u8 irq) {
+    u16 port;
+    u8 value;
+
+    if(irq < 8) {
+        port = PIC1_DATA;
+    } else {
+        port = PIC2_DATA;
+        irq -= 8;
+    }
+    value = io_inb(port) & ~(1 << irq);
+    io_outb(port, value);        
+}

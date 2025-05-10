@@ -23,4 +23,6 @@
 #define ICW4_SFNM 0x10
 
 void pic_send_eoi(u8 irq);
-void pic_remap(int off1, int off2); // 0 8
+void pic_remap(int off1, int off2);
+void pic_mask(u8 irq);
+void pic_unmask(u8 irq);
