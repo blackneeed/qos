@@ -1,13 +1,15 @@
 #include <drv/vga.h>
 #include <tables/idt/idt.h>
 #include <drv/pic.h>
+#include <drv/e9.h>
+#include <drv/ioport.h>
 
 vga_info info_;
 vga_info* info = &info_;
 
 void quickos_kernel_loop()
 {
-    
+    __asm__ volatile ("hlt");
 }
 
 void quickos_kernel_entry() 
@@ -19,7 +21,7 @@ void quickos_kernel_entry()
     vga_clear(info, color);
     vga_write_str_line(info, color, "Hello, world!");
     pic_remap(0x20, 0x28);
-    
+
     for (int i = 0; i < 8; i++) {
         pic_mask(i);
         pic_mask(i + 8);
@@ -28,7 +30,7 @@ void quickos_kernel_entry()
     pic_unmask(1);
     idt_init();
 
-    for (;;) __asm__ volatile ("hlt");
+    for (;;) quickos_kernel_loop();
     
     //while (1) __asm__ volatile ("hlt");
 }

@@ -2,6 +2,7 @@
 #include <drv/pic.h>
 #include <kernel_header.h>
 #include <conv.h>
+#include <drv/e9.h>
 
 const char* exception_strings[] = {
     "(#DE) Division Error",
@@ -39,15 +40,15 @@ void isr_handler(u32 int_no, u32 err_code)
     vga_color ok_color = {.fg = light_cyan, .bg = black};
     if (int_no < 32)
     {
+        e9_write_str(exception_strings[int_no]);
         vga_write_str_line(info, error_color, exception_strings[int_no]);
         __asm__ volatile ("cli; hlt");
     } else 
     {
         if (int_no == 33)
         {
-            vga_write_str_line(info, ok_color, "IRQ1 called.");
+            e9_write_str("IRQ1\n");
             pic_send_eoi(1);
-            vga_write_str_line(info, ok_color, "EOI sent.");
-        } else vga_write_str_line(info, ok_color, "ISR called.");
+        } else e9_write_str("Unhandled ISR\n");
     }
 }

@@ -1,4 +1,5 @@
 #include <types.h>
+#pragma once
 
 const char* u32_to_str(u32 value);
 u32 cPow(u32 base, u32 power);

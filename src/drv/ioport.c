@@ -14,5 +14,5 @@ u8 io_inb(u16 port)
 
 void io_wait()
 {
-    io_outb(0x80, 0);
+    for (int i = 0; i < 10; i++) io_outb(0x80, 0);
 }

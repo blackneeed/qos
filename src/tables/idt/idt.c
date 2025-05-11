@@ -10,8 +10,6 @@ static idtr_t idtr;
 __attribute__((aligned(0x10)))
 static idt_entry_t idt[IDT_MAX_DESCRIPTORS];
 
-static int vectors[IDT_MAX_DESCRIPTORS];
-
 extern void* isr_stub_table[];
 
 void idt_set_descriptor(u16 vector, void* isr, u8 flags)
@@ -33,7 +31,6 @@ void idt_init()
     for (u16 vector = 0; vector < IDT_MAX_DESCRIPTORS; vector++)
     {
         idt_set_descriptor(vector, isr_stub_table[vector], 0x8E);
-        vectors[vector] = 1;
     }
     
     __asm__ volatile ("lidt %0" : : "m"(idtr));

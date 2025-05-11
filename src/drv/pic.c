@@ -4,8 +4,12 @@
 
 void pic_send_eoi(u8 irq) {
     if (irq >= 8)
+    {
         io_outb(PIC2_COMMAND, PIC_EOI);
+        io_wait();
+    }
     io_outb(PIC1_COMMAND, PIC_EOI);
+    io_wait();
 }
 
 void pic_remap(int off1, int off2) {
