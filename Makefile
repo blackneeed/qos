@@ -1,5 +1,5 @@
 CFLAGS=-g -std=c11 -Wall -Wextra -ffreestanding -fno-stack-protector -fno-stack-check -fno-lto -m32 -mno-mmx -mno-sse -mno-sse2 -mno-red-zone -mno-avx -mno-80387 -I src
-LDFLAGS=-nostdlib -m elf_i386 -static
+LDFLAGS=-g -nostdlib -m elf_i386 -static
 ASMFLAGS=-g -f elf32
 CSRC=$(shell find src -name *.c)
 COBJ=$(patsubst src/%.c,obj/%.c.o,$(CSRC))
@@ -38,7 +38,7 @@ inject_bootloader: kernel
 	grub-mkrescue build/iso -o QuickOS.iso
 
 .PHONY: run
-run: kernel inject_bootloader
+run: build
 	qemu-system-x86_64 -cdrom QuickOS.iso -boot d -d guest_errors,cpu_reset,int
 
 .PHONY: clean

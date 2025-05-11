@@ -47,6 +47,7 @@ void isr_handler(u32 int_no, u32 err_code)
         {
             vga_write_str_line(info, ok_color, "IRQ1 called.");
             pic_send_eoi(1);
+            vga_write_str_line(info, ok_color, "EOI sent.");
         } else vga_write_str_line(info, ok_color, "ISR called.");
     }
 }
