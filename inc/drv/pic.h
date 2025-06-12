@@ -1,6 +1,9 @@
-#pragma once
+#ifndef PIC_H
+#define PIC_H
 #include <types.h>
 
+#define PIC_MASTER_START 32
+#define PIC_SLAVE_START 40
 #define PIC1_BASE 0x0020
 #define PIC2_BASE 0x00A0
 #define PIC1_COMMAND PIC1_BASE
@@ -22,7 +25,9 @@
 #define ICW4_BUF_MASTER	0x0C
 #define ICW4_SFNM 0x10
 
-void pic_send_eoi(u8 irq);
+void pic_send_slave_eoi();
+void pic_send_master_eoi();
 void pic_remap(int off1, int off2);
 void pic_mask(u8 irq);
 void pic_unmask(u8 irq);
+#endif

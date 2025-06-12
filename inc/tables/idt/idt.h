@@ -1,4 +1,5 @@
-#pragma once
+#ifndef IDT_H
+#define IDT_H
 #include <types.h>
 
 typedef struct
@@ -18,3 +19,4 @@ typedef struct
 
 void idt_set_descriptor(u16 vector, void* isr, u8 flags);
 void idt_init();
+#endif

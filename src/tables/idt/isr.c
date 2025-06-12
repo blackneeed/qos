@@ -1,8 +1,7 @@
-#include <drv/vga.h>
 #include <drv/pic.h>
-#include <kernel_header.h>
-#include <conv.h>
-#include <drv/e9.h>
+#include <std/stdlib.h>
+#include <std/stdio.h>
+#include <tables/idt/irq.h>
 
 const char* exception_strings[] = {
     "(#DE) Division Error",
@@ -36,19 +35,69 @@ const char* exception_strings[] = {
 
 void isr_handler(u32 int_no, u32 err_code)
 {
-    vga_color error_color = {.fg = light_red, .bg = black};
-    vga_color ok_color = {.fg = light_cyan, .bg = black};
+    UNUSED(err_code);
     if (int_no < 32)
     {
-        e9_write_str(exception_strings[int_no]);
-        vga_write_str_line(info, error_color, exception_strings[int_no]);
+        kputs(exception_strings[int_no]);
+        kputs("\r\n");
         __asm__ volatile ("cli; hlt");
-    } else 
+    } else if (int_no == PIC_MASTER_START + 0)
     {
-        if (int_no == 33)
-        {
-            e9_write_str("IRQ1\n");
-            pic_send_eoi(1);
-        } else e9_write_str("Unhandled ISR\n");
+        irq0_handler();
+        pic_send_master_eoi();
+    } else if (int_no == PIC_MASTER_START + 1)
+    { 
+        irq1_handler();
+        pic_send_master_eoi();   
+    } else if (int_no == PIC_MASTER_START + 2)
+    { 
+        irq2_handler();
+        pic_send_master_eoi();   
+    } else if (int_no == PIC_MASTER_START + 3)
+    { 
+        irq3_handler();
+        pic_send_master_eoi();   
+    } else if (int_no == PIC_MASTER_START + 4)
+    { 
+        irq4_handler();
+        pic_send_master_eoi();   
+    } else if (int_no == PIC_MASTER_START + 5)
+    { 
+        irq5_handler();
+        pic_send_master_eoi();   
+    } else if (int_no == PIC_MASTER_START + 6)
+    { 
+        irq6_handler();
+        pic_send_master_eoi();   
+    } else if (int_no == PIC_MASTER_START + 7)
+    { 
+        irq7_handler();
+        pic_send_master_eoi();   
+    } else if (int_no == PIC_SLAVE_START + 0) {
+        irq8_handler();
+        pic_send_slave_eoi();
+    } else if (int_no == PIC_SLAVE_START + 1) {
+        irq9_handler();
+        pic_send_slave_eoi();
+    } else if (int_no == PIC_SLAVE_START + 2) {
+        irq10_handler();
+        pic_send_slave_eoi();
+    } else if (int_no == PIC_SLAVE_START + 3) {
+        irq11_handler();
+        pic_send_slave_eoi();
+    } else if (int_no == PIC_SLAVE_START + 4) {
+        irq12_handler();
+        pic_send_slave_eoi();
+    } else if (int_no == PIC_SLAVE_START + 5) {
+        irq13_handler();
+        pic_send_slave_eoi();
+    } else if (int_no == PIC_SLAVE_START + 6) {
+        irq14_handler();
+        pic_send_slave_eoi();
+    } else if (int_no == PIC_SLAVE_START + 7) {
+        irq15_handler();
+        pic_send_slave_eoi();
+    } else {
+        kputs("Unhandled ISR\r\n");
     }
 }

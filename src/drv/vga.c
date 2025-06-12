@@ -1,148 +1,150 @@
 #include <types.h>
 #include <drv/ioport.h>
-#include "vga.h"
+#include <drv/vga.h>
 
-void vga_initialize(vga_info* info, char* vmem, vga_pos pos, vga_size size)
+static char* VGA_VMEM = (char*)0xB8000;
+static int VGA_SIZE_W = 80;
+static int VGA_SIZE_H = 25;
+static int VGA_POS_X = 0;
+static int VGA_POS_Y = 0;
+
+char* vga_get_color_ptr(int x, int y)
 {
-    info->vmem = vmem;
-    info->pos = pos;
-    info->size = size;
+    return VGA_VMEM + (x + (y * VGA_SIZE_W)) * 2 + 1;
 }
 
-char* vga_get_color_ptr(vga_info* info, vga_pos pos)
+char* vga_get_char_ptr(int x, int y)
 {
-    return info->vmem + (pos.x + (pos.y * info->size.w)) * 2 + 1;
+    return VGA_VMEM + (x + (y * VGA_SIZE_W)) * 2;
 }
 
-char* vga_get_char_ptr(vga_info* info, vga_pos pos)
+u8 vga_get_color_attr(vga_color fg, vga_color bg)
 {
-    return info->vmem + (pos.x + (pos.y * info->size.w)) * 2;
+    return fg | (bg << 4);
 }
 
-u8 vga_get_color_attr(vga_color color)
+void vga_scroll_up(vga_color fg, vga_color bg)
 {
-    return color.fg | (color.bg << 4);
-}
+    int srcx = 0;
+    int srcy = 0;
+    int dstx = 0;
+    int dsty = 0;
 
-void vga_scroll_up(vga_info* info, vga_color color)
-{
-    vga_pos src = {};
-    vga_pos dest = {};
-    for (src.y = 1; src.y < info->size.h; src.y++)
+    for (srcy = 1; srcy < VGA_SIZE_H; srcy++)
     {
-        for (src.x = 0; src.x < info->size.w; src.x++)
+        for (srcx = 0; srcx < VGA_SIZE_W; srcx++)
         {
-            *vga_get_char_ptr(info, dest) = *vga_get_char_ptr(info, src);
-            *vga_get_color_ptr(info, dest) = *vga_get_color_ptr(info, src);
+            *vga_get_char_ptr(dstx, dsty) = *vga_get_char_ptr(srcx, srcy);
+            *vga_get_color_ptr(dstx, dsty) = *vga_get_color_ptr(srcx, srcy);
         }
     }
-    vga_clear_line(info, color, 0);
+
+    vga_clear_line(fg, bg, 0);
 }
 
-void vga_next_line(vga_info* info, vga_color color)
+void vga_next_line(vga_color fg, vga_color bg)
 {
-    if (info->pos.y + 1 >= info->size.h)
+    if (VGA_POS_Y + 1 >= VGA_SIZE_H)
     {
-        vga_scroll_up(info, color);
+        vga_scroll_up(fg, bg);
     }
-    else info->pos.y++;
+    else VGA_POS_Y++;
 }
 
-void vga_next_char(vga_info* info, vga_color color)
+void vga_next_char(vga_color fg, vga_color bg)
 {
-    if (info->pos.x + 1 >= info->size.w)
+    if (VGA_POS_X + 1 >= VGA_SIZE_W)
     {
-        vga_next_line(info, color);
-        info->pos.x = 0;
+        vga_next_line(fg, bg);
+        VGA_POS_X = 0;
     }
-    else info->pos.x++;
+    else VGA_POS_X++;
 }
 
-void vga_write_char(vga_info* info, vga_color color, char c)
+void vga_write_char(vga_color fg, vga_color bg, char c)
 {
     switch (c)
     {
         case '\r':
-            info->pos.x = 0;
+            VGA_POS_X = 0;
             break;
 
         case '\n':
-            vga_next_line(info, color);
+            vga_next_line(fg, bg);
             break;
 
         case '\b':
-            if (info->pos.x > 0)
-                info->pos.x--;
-            else if (info->pos.y > 0)
-                info->pos.y--;
+            if (VGA_POS_X > 0)
+                VGA_POS_X--;
+            else if (VGA_POS_Y > 0)
+                VGA_POS_Y--;
             break;
 
         case '\t':
             for (int i = 0; i < 4; i++)
-                vga_write_char(info, color, ' ');
+                vga_write_char(fg, bg, ' ');
             break;
         
         default:
-            *vga_get_char_ptr(info, info->pos) = c;
-            *vga_get_color_ptr(info, info->pos) = vga_get_color_attr(color);
-            vga_next_char(info, color);
+            *vga_get_char_ptr(VGA_POS_X, VGA_POS_Y) = c;
+            *vga_get_color_ptr(VGA_POS_X, VGA_POS_Y) = vga_get_color_attr(fg, bg);
+            vga_next_char(fg, bg);
             break;
     }
 
-    vga_cursor_set_pos(info, info->pos);
+    vga_cursor_set_pos(VGA_POS_X, VGA_POS_Y);
 }
 
-void vga_cursor_set_pos(vga_info* info, vga_pos pos)
+void vga_cursor_set_pos(int x, int y)
 {
-    u16 cursor_location = pos.y * info->size.w + pos.x;
+    u16 abs_pos = y * VGA_SIZE_W + x;
     io_outb(VGA_CRTC_ADDR, 0xE);
-    io_outb(VGA_CRTC_DATA, (u8)(cursor_location >> 8));
+    io_outb(VGA_CRTC_DATA, (u8)(abs_pos >> 8));
     io_outb(VGA_CRTC_ADDR, 0xF);
-    io_outb(VGA_CRTC_DATA, (u8)cursor_location);
+    io_outb(VGA_CRTC_DATA, (u8)abs_pos);
 }
 
-void vga_write_char_line(vga_info* info, vga_color color, char c)
+void vga_write_char_line(vga_color fg, vga_color bg, char c)
 {
-    vga_write_char(info, color, c);
-    vga_write_empty_line(info, color);
+    vga_write_char(fg, bg, c);
+    vga_write_empty_line(fg, bg);
 }
 
-void vga_write_str(vga_info* info, vga_color color, const char* s)
+void vga_write_str(vga_color fg, vga_color bg, const char* s)
 {
     for (int i = 0; s[i]; i++)
-        vga_write_char(info, color, s[i]);
+        vga_write_char(fg, bg, s[i]);
 }
 
-void vga_write_str_line(vga_info* info, vga_color color, const char* s)
+void vga_write_str_line(vga_color fg, vga_color bg, const char* s)
 {
-    vga_write_str(info, color, s);
-    vga_write_empty_line(info, color);
+    vga_write_str(fg, bg, s);
+    vga_write_empty_line(fg, bg);
 }
 
-void vga_write_empty_line(vga_info* info, vga_color color)
+void vga_write_empty_line(vga_color fg, vga_color bg)
 {
-    vga_write_str(info, color, "\r\n");    
+    vga_write_str(fg, bg, "\r\n");    
 }
 
-void vga_clear_line(vga_info* info, vga_color color, int y)
+void vga_clear_line(vga_color fg, vga_color bg, int y)
 {
-    vga_pos pos;
-    pos.y = y;
-    for (; pos.x < info->size.w; pos.x++) {
-        *vga_get_char_ptr(info, pos) = ' ';
-        *vga_get_color_ptr(info, pos) = vga_get_color_attr(color);
+    int cx = 0;
+    int cy = y;
+    for (; cx < VGA_SIZE_W; cx++) {
+        *vga_get_char_ptr(cx, cy) = ' ';
+        *vga_get_color_ptr(cx, cy) = vga_get_color_attr(fg, bg);
     }
 }
 
-void vga_clear(vga_info* info, vga_color color)
+void vga_clear(vga_color fg, vga_color bg)
 {
-    vga_pos pos;
-    for (pos.x = 0; pos.x < info->size.w; pos.x++)
+    for (int x = 0; x < VGA_SIZE_W; x++)
     {
-        for (pos.y = 0; pos.y < info->size.h; pos.y++)
+        for (int y = 0; y < VGA_SIZE_H; y++)
         {
-            *vga_get_char_ptr(info, pos) = ' ';
-            *vga_get_color_ptr(info, pos) = vga_get_color_attr(color);
+            *vga_get_char_ptr(x, y) = ' ';
+            *vga_get_color_ptr(x, y) = vga_get_color_attr(fg, bg);
         }
     }
 }

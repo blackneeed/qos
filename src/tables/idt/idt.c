@@ -1,6 +1,6 @@
 #include <types.h>
 #include <stdint.h>
-#include "idt.h"
+#include <tables/idt/idt.h>
 #include <drv/vga.h>
 
 #define IDT_MAX_DESCRIPTORS 256

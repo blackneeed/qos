@@ -1,13 +1,16 @@
 #include <types.h>
 #include <drv/ioport.h>
-#include "pic.h"
+#include <drv/pic.h>
 
-void pic_send_eoi(u8 irq) {
-    if (irq >= 8)
-    {
-        io_outb(PIC2_COMMAND, PIC_EOI);
-        io_wait();
-    }
+void pic_send_slave_eoi()
+{
+    io_outb(PIC2_COMMAND, PIC_EOI);
+    io_wait();
+    pic_send_master_eoi();
+}
+
+void pic_send_master_eoi()
+{
     io_outb(PIC1_COMMAND, PIC_EOI);
     io_wait();
 }

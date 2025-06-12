@@ -1,18 +1,21 @@
+#ifndef IOPORT_H
+#define IOPORT_H
 #include <types.h>
 
-void io_outb(u16 port, u8 val)
+static inline void io_outb(u16 port, u8 val)
 {
     __asm__ volatile ("outb %b0, %w1" : : "a"(val), "Nd"(port) : "memory");
 }
 
-u8 io_inb(u16 port)
+static inline u8 io_inb(u16 port)
 {
     u8 ret;
     __asm__ volatile ("inb %w1, %b0" : "=a"(ret) : "Nd"(port) : "memory");
     return ret;
 }
 
-void io_wait()
+static inline void io_wait()
 {
-    for (int i = 0; i < 10; i++) io_outb(0x80, 0);
+    io_outb(0x80, 0);
 }
+#endif
