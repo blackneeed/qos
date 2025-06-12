@@ -1,6 +1,5 @@
 #include <drv/pic.h>
 #include <std/stdlib.h>
-#include <std/stdio.h>
 #include <tables/idt/irq.h>
 
 const char* exception_strings[] = {
@@ -38,8 +37,7 @@ void isr_handler(u32 int_no, u32 err_code)
     UNUSED(err_code);
     if (int_no < 32)
     {
-        kputs(exception_strings[int_no]);
-        kputs("\r\n");
+        // mmm
         __asm__ volatile ("cli; hlt");
     } else if (int_no == PIC_MASTER_START + 0)
     {
@@ -98,6 +96,6 @@ void isr_handler(u32 int_no, u32 err_code)
         irq15_handler();
         pic_send_slave_eoi();
     } else {
-        kputs("Unhandled ISR\r\n");
+        // mmm
     }
 }
