@@ -9,7 +9,7 @@ void putc(char c)
 
 void puts(const char* str)
 {
-    for (int i = 0; str[i]; i++)
+    for (size i = 0; str[i]; i++)
         putc(str[i]);
 }
 
@@ -27,6 +27,6 @@ void kputc(char c)
 
 void kputs(const char* str)
 {
-    for (int i = 0; i < str[i]; i++)
+    for (size i = 0; i < str[i]; i++)
         kputc(str[i]);
 }
