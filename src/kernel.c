@@ -2,6 +2,7 @@
 #include <drv/pic.h>
 #include <struct/fb.h>
 #include <drv/e9.h>
+#include <drv/ps2kb.h>
 #include <struct/font.h>
 #include <cli.h>
 #include <drv/vga.h>
@@ -388,8 +389,6 @@ void quickos_kernel_entry(struct multiboot_info* multiboot2_info_structure)
     cli_set_color(0xFFFFFF);
     cli_set_bg_color(0x000000);
 
-    cli_put_str("Welcome to qos!");
-
     pic_remap(PIC_MASTER_START, PIC_SLAVE_START);
 
     for (int i = 0; i < 8; i++) {
@@ -397,8 +396,17 @@ void quickos_kernel_entry(struct multiboot_info* multiboot2_info_structure)
         pic_mask(i + 8);
     }
 
-    //pic_unmask(1);
+    if (ps2_set_scancode_set(2) != 0)
+    {
+        cli_set_color(0xFF0000);
+        cli_put_str("Could not set PS2 scancode set.\r\n");
+        cli_restore_color();
+    }
+
+    pic_unmask(1);
     idt_init();
+
+    cli_put_str("Welcome to qos!\r\n> ");
 
     for (;;) quickos_kernel_loop();
 }

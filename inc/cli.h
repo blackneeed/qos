@@ -9,6 +9,8 @@ void cli_set_font8(font8* font);
 void cli_set_font16(font16* font);
 void cli_set_color(u32 color);
 void cli_set_bg_color(u32 color);
+void cli_restore_color();
+void cli_restore_bg_color();
 void cli_put_char(char c);
 int cli_put_str(const char* s);
 #endif
