@@ -14,10 +14,17 @@ gdt_descriptor:
     dd gdt_start
 
 section .multiboot
-align 4
-dd 0x1BADB002
-dd ((1 << 1) | (1 << 0))
-dd -(0x1BADB002 + ((1 << 1) | (1 << 0)))
+align 8
+multiboot2_header_start:
+dd 0xE85250D6
+dd 0
+dd multiboot2_header_end - multiboot2_header_start
+dd -(0xE85250D6 + 0 + (multiboot2_header_end - multiboot2_header_start))
+
+dw 0
+dw 0
+dd 8
+multiboot2_header_end:
 
 section .text
 quickos_loader_entry:
