@@ -27,6 +27,6 @@ void kputc(char c)
 
 void kputs(const char* str)
 {
-    for (size i = 0; i < str[i]; i++)
+    for (size i = 0; str[i]; i++)
         kputc(str[i]);
 }
