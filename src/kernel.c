@@ -360,18 +360,24 @@ void quickos_kernel_loop()
 {
     key buf;
     if (ps2kb_try_get_key(&buf) == 1)
-        if (buf.type == press)
-            cli_write_char(buf.ascii);
+        if (buf.type == release)
+        {
+            if (buf.key == backspace)
+            {
+                printf("\b \b");
+            } else 
+                printf("%c", buf.ascii);
+        }
 }
 
 void quickos_kernel_entry(struct multiboot_info* multiboot2_info_structure) 
 {
     multiboot2_retrieved mb2_retrieved = {0};
     multiboot2_retrieve(multiboot2_info_structure, &mb2_retrieved);
-    if (mb2_retrieved.fb == NULL)
+    if (mb2_retrieved.fb == NULL || (mb2_retrieved.fb->common.framebuffer_bpp != 32 && mb2_retrieved.fb->common.framebuffer_bpp != 24 && mb2_retrieved.fb->common.framebuffer_bpp != 16))
     {
-        e9_write_str("No framebuffer found.\n");
-        vga_write_str_line(red, black, "No framebuffer found.\n");
+        e9_write_str("No compatible framebuffer found.\n");
+        vga_write_str_line(red, black, "No compatible framebuffer found.\n");
         __asm__ volatile ("cli;hlt");
     }
 
@@ -381,13 +387,18 @@ void quickos_kernel_entry(struct multiboot_info* multiboot2_info_structure)
     fb.height = mb2_retrieved.fb->common.framebuffer_height;
     fb.pitch = mb2_retrieved.fb->common.framebuffer_pitch;
     fb.bits_per_pixel = mb2_retrieved.fb->common.framebuffer_bpp;
-    fb.bytes_per_pixel = mb2_retrieved.fb->common.framebuffer_bpp / 8;
     fb.red_mask_size = mb2_retrieved.fb->framebuffer_red_mask_size;
     fb.red_field_position = mb2_retrieved.fb->framebuffer_red_field_position;
     fb.green_mask_size = mb2_retrieved.fb->framebuffer_green_mask_size;
     fb.green_field_position = mb2_retrieved.fb->framebuffer_green_field_position;
     fb.blue_mask_size = mb2_retrieved.fb->framebuffer_blue_mask_size;
     fb.blue_field_position = mb2_retrieved.fb->framebuffer_blue_field_position;
+    if (fb.bits_per_pixel == 32)
+        fb.put_pixel = framebuffer_put_pixel32;
+    else if (fb.bits_per_pixel == 24)
+        fb.put_pixel = framebuffer_put_pixel24;
+    else if (fb.bits_per_pixel == 16)
+        fb.put_pixel = framebuffer_put_pixel16;
 
     cli_init(&fb);
     cli_set_font16((font16*)&__TOSH_SAT16);

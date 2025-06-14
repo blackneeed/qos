@@ -92,9 +92,9 @@ int cli_write_char(char c)
             for (u32 fy = 0; fy < 16; fy++) {
                 if (CURRENT_CLI_CTX.f16->letters[(u8)c].row[fy] & ((1 << (7 - fx))))
                 {
-                    framebuffer_put_pixel(CURRENT_CLI_CTX.fb, CURRENT_CLI_CTX.color, CURRENT_CLI_CTX.x + fx, CURRENT_CLI_CTX.y + fy);
+                    CURRENT_CLI_CTX.fb->put_pixel(CURRENT_CLI_CTX.fb, CURRENT_CLI_CTX.color, CURRENT_CLI_CTX.x + fx, CURRENT_CLI_CTX.y + fy);
                 } else {
-                    framebuffer_put_pixel(CURRENT_CLI_CTX.fb, CURRENT_CLI_CTX.background_color, CURRENT_CLI_CTX.x + fx, CURRENT_CLI_CTX.y + fy);
+                    CURRENT_CLI_CTX.fb->put_pixel(CURRENT_CLI_CTX.fb, CURRENT_CLI_CTX.background_color, CURRENT_CLI_CTX.x + fx, CURRENT_CLI_CTX.y + fy);
                 }
             }
         }

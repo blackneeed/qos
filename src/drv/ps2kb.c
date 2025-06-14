@@ -191,16 +191,18 @@ void ps2kb_keyboard_interrupt()
         CURRENT_PS2_CTX.got_f0 = 1;
     } else {
         key_code kc = ps2kb_scancode_to_keycode(scancode, CURRENT_PS2_CTX.got_e0);
+        if (kc == unknown)
+        {
+            kprintf("[PS2] unknown scancode %d\r\n", scancode);
+            return;
+        }
+        
         CURRENT_PS2_CTX.key_buf[CURRENT_PS2_CTX.key_buf_count].key = kc;
         CURRENT_PS2_CTX.key_buf[CURRENT_PS2_CTX.key_buf_count].ascii = keycode_to_ascii(kc, CURRENT_PS2_CTX.got_shift, CURRENT_PS2_CTX.got_caps);
         CURRENT_PS2_CTX.key_buf[CURRENT_PS2_CTX.key_buf_count].mods = (CURRENT_PS2_CTX.got_alt ? alt : 0) | (CURRENT_PS2_CTX.got_ctrl ? ctrl : 0) | (CURRENT_PS2_CTX.got_shift ? shift : 0) | (CURRENT_PS2_CTX.got_caps ? caps : 0);
         CURRENT_PS2_CTX.key_buf[CURRENT_PS2_CTX.key_buf_count].scancode = scancode;
         CURRENT_PS2_CTX.key_buf[CURRENT_PS2_CTX.key_buf_count].type = CURRENT_PS2_CTX.got_f0;
         CURRENT_PS2_CTX.key_buf_count++;
-        if (kc == unknown)
-        {
-            kprintf("[PS2] unknown scancode %d\r\n", scancode);
-        }
 
         if (kc == lshift || kc == rshift)
         {
