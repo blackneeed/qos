@@ -108,14 +108,14 @@ u8 ps2ctrl_send_byte_port2(u8 byte)
     {
         if (!ps2ctrl_wait_input_buffer_clear())
         {
-            kprintf("[PS2] ps2ctrl_send_byte_port2(): ps2ctrl_wait_input_buffer_clear() failed, retrying (max tries = %d)\r\n", PS2CTRL_COMMAND_RETRY_COUNT);
+            kprintf("[PS2] ps2ctrl_send_byte_port2(): ps2ctrl_wait_input_buffer_clear() failed, retrying (try %d/%d)\r\n", i+1, PS2CTRL_COMMAND_RETRY_COUNT);
             continue;
         }
 
         if (!ps2ctrl_send_command(PS2CTRL_COMMAND_NEXT_PORT2)) continue;
         if (!ps2ctrl_wait_input_buffer_clear())
         {
-            kprintf("[PS2] ps2ctrl_send_byte_port2(): ps2ctrl_wait_input_buffer_clear() failed, retrying (max tries = %d)\r\n", PS2CTRL_COMMAND_RETRY_COUNT);
+            kprintf("[PS2] ps2ctrl_send_byte_port2(): ps2ctrl_wait_input_buffer_clear() failed, retrying (try %d/%d)\r\n", i+1, PS2CTRL_COMMAND_RETRY_COUNT);
             continue;
         }
         
