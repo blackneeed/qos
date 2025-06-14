@@ -1,6 +1,8 @@
 #include <drv/pic.h>
 #include <std/stdlib.h>
 #include <tables/idt/irq.h>
+#include <drv/e9.h>
+#include <cli.h>
 
 const char* exception_strings[] = {
     "(#DE) Division Error",
@@ -37,7 +39,11 @@ void isr_handler(u32 int_no, u32 err_code)
     UNUSED(err_code);
     if (int_no < 32)
     {
-        // mmm
+        cli_set_color(0xFF0000);
+        cli_write_str(exception_strings[int_no]);
+        e9_write_str(exception_strings[int_no]);
+        cli_write_str("\r\n");
+        e9_write_str("\r\n");
         __asm__ volatile ("cli; hlt");
     } else if (int_no == PIC_MASTER_START + 0)
     {
@@ -96,6 +102,6 @@ void isr_handler(u32 int_no, u32 err_code)
         irq15_handler();
         pic_send_slave_eoi();
     } else {
-        // mmm
+        e9_write_str("Unhandled ISR.\r\n");
     }
 }

@@ -1,7 +1,7 @@
 #include <drv/ps2kb.h>
 
 void irq0_handler() {}
-void irq1_handler() {ps2_keyboard_interrupt();}
+void irq1_handler() {ps2kb_keyboard_interrupt();}
 void irq2_handler() {}
 void irq3_handler() {}
 void irq4_handler() {}

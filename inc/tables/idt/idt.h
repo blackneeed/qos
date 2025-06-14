@@ -2,7 +2,7 @@
 #define IDT_H
 #include <types.h>
 
-typedef struct
+typedef struct idt_entry_t
 {
     u16 isr_low;
     u16 kernel_cs;
@@ -11,7 +11,7 @@ typedef struct
     u16 isr_high;
 } __attribute__((packed)) idt_entry_t;
 
-typedef struct
+typedef struct idtr_t
 {
     u16 limit;
     u32 base;

@@ -3,6 +3,8 @@
 #include <struct/fb.h>
 #include <drv/e9.h>
 #include <drv/ps2kb.h>
+#include <drv/ps2ctrl.h>
+#include <std/stdio.h>
 #include <struct/font.h>
 #include <cli.h>
 #include <drv/vga.h>
@@ -356,7 +358,10 @@ u8 __TOSH_SAT16[] = {
 
 void quickos_kernel_loop()
 {
-    __asm__ volatile ("hlt");
+    key buf;
+    if (ps2kb_try_get_key(&buf) == 1)
+        if (buf.type == press)
+            cli_write_char(buf.ascii);
 }
 
 void quickos_kernel_entry(struct multiboot_info* multiboot2_info_structure) 
@@ -388,25 +393,38 @@ void quickos_kernel_entry(struct multiboot_info* multiboot2_info_structure)
     cli_set_font16((font16*)&__TOSH_SAT16);
     cli_set_color(0xFFFFFF);
     cli_set_bg_color(0x000000);
+    kprintf("[CLI] initialized\r\n");
 
     pic_remap(PIC_MASTER_START, PIC_SLAVE_START);
+    kprintf("[PIC] remapped\r\n");
 
     for (int i = 0; i < 8; i++) {
         pic_mask(i);
         pic_mask(i + 8);
     }
 
-    if (ps2_set_scancode_set(2) != 0)
+    kprintf("[PIC] masked\r\n");
+
+    if (!ps2ctrl_init(1, 0))
     {
-        cli_set_color(0xFF0000);
-        cli_put_str("Could not set PS2 scancode set.\r\n");
-        cli_restore_color();
+        kprintf("[PS2] failed to initialize controller\r\n");
+    } else {
+        kprintf("[PS2] initialized controller\r\n");
+    }
+
+    if (!ps2kb_init())
+    {
+        kprintf("[PS2] failed to initialize keyboard\r\n");
+    } else {
+        kprintf("[PS2] initialized keyboard\r\n");
     }
 
     pic_unmask(1);
+    kprintf("[PIC] IRQ1 unmasked\r\n");
     idt_init();
+    kprintf("[IDT] IDT initialized\r\n");
 
-    cli_put_str("Welcome to qos!\r\n> ");
+    printf("Welcome to qos!\r\n> ");
 
     for (;;) quickos_kernel_loop();
 }

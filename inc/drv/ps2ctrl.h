@@ -1,0 +1,45 @@
+#ifndef PS2CTRL_H
+#define PS2CTRL_H
+#include <types.h>
+#define PS2CTRL_DATA_PORT 0x60
+
+#define PS2CTRL_STATUS_PORT 0x64
+#define PS2CTRL_STATUS_OUTPUT_BUFFER_STATUS_BIT_IDX 0
+#define PS2CTRL_STATUS_INPUT_BUFFER_STATUS_BIT_IDX 1
+#define PS2CTRL_STATUS_SYSTEM_FLAG_BIT_IDX 2
+#define PS2CTRL_STATUS_TIMEOUT_ERROR_BIT_IDX 6
+#define PS2CTRL_STATUS_PARITY_ERROR_BIT_IDX 7
+
+#define PS2CTRL_BUFFER_STATUS_TIMEOUT 100000
+
+#define PS2CTRL_COMMAND_PORT 0x64
+#define PS2CTRL_COMMAND_DISABLE_PORT1 0xAD
+#define PS2CTRL_COMMAND_ENABLE_PORT1 0xAE
+#define PS2CTRL_COMMAND_DISABLE_PORT2 0xA7
+#define PS2CTRL_COMMAND_ENABLE_PORT2 0xA8
+#define PS2CTRL_COMMAND_READ_CONFIG_BYTE 0x20
+#define PS2CTRL_COMMAND_WRITE_CONFIG_BYTE 0x60
+#define PS2CTRL_COMMAND_READ_CONTROLLER_OUTPUT_PORT 0xD0
+#define PS2CTRL_COMMAND_WRITE_CONTROLLER_OUTPUT_PORT 0xD1
+#define PS2CTRL_COMMAND_NEXT_PORT2 0xD4
+#define PS2CTRL_COMMAND_RETRY_COUNT 3
+
+#define PS2CTRL_CONFIG_BYTE_PORT1_INT 0
+#define PS2CTRL_CONFIG_BYTE_PORT2_INT 1
+#define PS2CTRL_CONFIG_BYTE_SYSTEM_FLAG 2
+#define PS2CTRL_CONFIG_BYTE_PORT1_CLK 4
+#define PS2CTRL_CONFIG_BYTE_PORT2_CLK 5
+#define PS2CTRL_CONFIG_BYTE_PORT1_TRANSLATION 6
+
+u8 ps2ctrl_read_status();
+u8 ps2ctrl_input_buffer_clear();
+u8 ps2ctrl_output_buffer_clear();
+u8 ps2ctrl_wait_input_buffer_clear();
+u8 ps2ctrl_wait_output_buffer_full();
+u8 ps2ctrl_send_command(u8 command);
+u8 ps2ctrl_get_config_byte(u8* out);
+u8 ps2ctrl_set_config_byte(u8 new);
+u8 ps2ctrl_send_byte_port1(u8 byte);
+u8 ps2ctrl_send_byte_port2(u8 byte);
+u8 ps2ctrl_init(u8 port1_enable, u8 port2_enable);
+#endif

@@ -1,29 +1,12 @@
 #ifndef PS2KB_H
 #define PS2KB_H
 #include <types.h>
+#include <struct/key.h>
 
-static const char ps2kb_scancode_set2_map[] =
-{
-    0, 0, '1', '2',
-    '3', '4', '5', '6',
-    '7', '8', '9', '0',
-    '-', '=', 0, 0,
-    'q', 'w', 'e', 'r',
-    't', 'y', 'u', 'i',
-    'o', 'p', '[', ']',
-    0, 0, 'a', 's',
-    'd', 'f', 'g', 'h',
-    'j', 'k', 'l', ';',
-    '\'', '`', 0, '\\',
-    'z', 'x', 'c', 'v',
-    'b', 'n', 'm', ',',
-    '.', '/', 0, '*',
-    0, ' ', 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0
-};
+#define PS2_INPUT_BUF_SIZE 256
 
-int ps2_set_scancode_set(u8 set);
-void ps2_keyboard_interrupt();
+u8 ps2kb_init();
+key_code ps2kb_scancode_to_keycode(u8 scancode, u8 e0);
+void ps2kb_keyboard_interrupt();
+u8 ps2kb_try_get_key(key* buf);
 #endif

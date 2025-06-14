@@ -2,7 +2,7 @@
 #define FB_H
 #include <types.h>
 
-typedef struct {
+typedef struct framebuffer {
     void* addr;
     u32 pitch;
     u32 width;
