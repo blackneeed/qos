@@ -1,9 +1,9 @@
 CFLAGS=-g -std=c11 -Wall -Wextra -ffreestanding -fno-stack-protector -fno-stack-check -fno-lto -m32 -mno-mmx -mno-sse -mno-sse2 -mno-red-zone -mno-avx -mno-80387 -I inc
 LDFLAGS=-g -nostdlib -m elf_i386 -static
 ASMFLAGS=-g -f elf32
-CSRC=$(shell find src -name *.c)
+CSRC=$(shell find src -name '*.c')
 COBJ=$(patsubst src/%.c,obj/%.c.o,$(CSRC))
-ASMSRC=$(shell find src -name *.asm)
+ASMSRC=$(shell find src -name '*.asm')
 ASMOBJ=$(patsubst src/%.asm,obj/%.asm.o,$(ASMSRC))
 
 .PHONY: build
@@ -42,5 +42,5 @@ run: build
 	qemu-system-x86_64 -cdrom QuickOS.iso -boot d -d guest_errors,cpu_reset,int -debugcon file:/dev/stdout
 
 .PHONY: clean
-clean: kernel inject_bootloader
+clean:
 	rm -rf build obj
