@@ -1,5 +1,6 @@
 #include <drv/pic.h>
 #include <std/stdlib.h>
+#include <std/stdio.h>
 #include <tables/idt/irq.h>
 #include <drv/e9.h>
 #include <cli.h>
@@ -39,11 +40,7 @@ void isr_handler(u32 int_no, u32 err_code)
     UNUSED(err_code);
     if (int_no < 32)
     {
-        cli_set_color(0xFF0000);
-        cli_write_str(exception_strings[int_no]);
-        e9_write_str(exception_strings[int_no]);
-        cli_write_str("\r\n");
-        e9_write_str("\r\n");
+        kprintf("%s\r\n", exception_strings[int_no]);
         __asm__ volatile ("cli; hlt");
     } else if (int_no == PIC_MASTER_START + 0)
     {
@@ -102,6 +99,6 @@ void isr_handler(u32 int_no, u32 err_code)
         irq15_handler();
         pic_send_slave_eoi();
     } else {
-        e9_write_str("Unhandled ISR.\r\n");
+        kprintf("Unhandled ISR.\r\n");
     }
 }
