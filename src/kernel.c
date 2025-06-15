@@ -360,9 +360,9 @@ void quickos_kernel_loop()
 {
     key buf;
     if (ps2kb_try_get_key(&buf) == 1)
-        if (buf.type == release)
+        if (buf.type == KEY_release)
         {
-            if (buf.key == backspace)
+            if (buf.key == KEY_backspace)
             {
                 printf("\b \b");
             } else 
@@ -406,9 +406,6 @@ void quickos_kernel_entry(struct multiboot_info* multiboot2_info_structure)
     cli_set_bg_color(0x000000);
     kprintf("[CLI] initialized\r\n");
 
-    pic_remap(PIC_MASTER_START, PIC_SLAVE_START);
-    kprintf("[PIC] remapped\r\n");
-
     for (int i = 0; i < 8; i++) {
         pic_mask(i);
         pic_mask(i + 8);
@@ -416,26 +413,52 @@ void quickos_kernel_entry(struct multiboot_info* multiboot2_info_structure)
 
     kprintf("[PIC] masked\r\n");
 
-    if (!ps2ctrl_init(1, 0))
+    pic_remap(PIC_MASTER_START, PIC_SLAVE_START);
+    kprintf("[PIC] remapped:\r\n\tmaster: ISR%d-%d (IRQ %d-%d)\r\n\tslave: ISR%d-%d (IRQ %d-%d)\r\n", PIC_MASTER_START, PIC_MASTER_START + 7, 0, 7, PIC_SLAVE_START, PIC_SLAVE_START + 7, 8, 15);
+
+    idt_init();
+    kprintf("[IDT] initialized\r\n");
+
+    ps2ctrl_info ps2_info;
+    ps2_info.port1_available = 0;
+    ps2_info.port1_type = PS2DEV_unknown;
+    ps2_info.port2_available = 0;
+    ps2_info.port2_type = PS2DEV_unknown;
+
+    if (!ps2ctrl_init(&ps2_info))
     {
         kprintf("[PS2] failed to initialize controller\r\n");
     } else {
         kprintf("[PS2] initialized controller\r\n");
     }
 
-    if (!ps2kb_init())
+    kprintf("[PS2] devices:\r\n");
+
+    if (ps2_info.port1_available)
     {
-        kprintf("[PS2] failed to initialize keyboard\r\n");
-    } else {
-        kprintf("[PS2] initialized keyboard\r\n");
+        kprintf("\tport: 1, type: %d, keyboard = %d, mouse = %d\r\n", ps2_info.port1_type, ps2ctrl_is_keyboard_type(ps2_info.port1_type), ps2ctrl_is_mouse_type(ps2_info.port1_type));
     }
 
-    pic_unmask(1);
-    kprintf("[PIC] IRQ1 unmasked\r\n");
-    idt_init();
-    kprintf("[IDT] IDT initialized\r\n");
+    if (ps2_info.port2_available)
+    {
+        kprintf("\tport: 2, type: %d, keyboard = %d, mouse = %d\r\n", ps2_info.port2_type, ps2ctrl_is_keyboard_type(ps2_info.port2_type), ps2ctrl_is_mouse_type(ps2_info.port2_type));
+    }
 
-    printf("Welcome to qos!\r\n> ");
+    ps2kb_init();
+
+    if (ps2_info.port1_available)
+    {
+        pic_unmask(1);
+        kprintf("[PIC] IRQ1 unmasked\r\n");
+    }
+
+    if (ps2_info.port2_available)
+    {
+        pic_unmask(12);
+        kprintf("[PIC] IRQ12 unmasked\r\n");
+    }
+
+    printf("Welcome to qos!\r\n");
 
     for (;;) quickos_kernel_loop();
 }

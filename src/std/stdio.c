@@ -46,7 +46,11 @@ int dprintf(const char *restrict format, ...)
 
 int kvprintf(const char* restrict format, va_list ap)
 {
-    return dvprintf(format, ap);
+    dvprintf(format, ap);
+    cli_set_color(0x808080);
+    int rv = vprintf(format, ap);
+    cli_restore_color();
+    return rv;
 }
 
 int kprintf(const char* restrict format, ...)
