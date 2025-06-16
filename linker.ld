@@ -2,7 +2,9 @@ ENTRY(quickos_loader_entry)
 
 SECTIONS 
 {
-    . = 2M;
+    
+    . = 1M;
+    KERNEL_START = .;
 
     .text BLOCK(4K) : ALIGN(4K) {
         *(.multiboot)
@@ -26,4 +28,5 @@ SECTIONS
     .note-gnu-build-id BLOCK(4K) : ALIGN(4K) {
         *(.note-gnu-build-id)
     }
+    KERNEL_END = .;
 }

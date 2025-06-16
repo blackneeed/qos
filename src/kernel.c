@@ -5,11 +5,13 @@
 #include <drv/ps2kb.h>
 #include <drv/ps2ctrl.h>
 #include <std/stdio.h>
+#include <std/stdlib.h>
 #include <struct/font.h>
 #include <cli.h>
+#include <core/alloc.h>
 #include <drv/vga.h>
 #include <drv/ioport.h>
-#include <boot/multiboot2.h>
+#include <boot/multiboot2.h> 
 
 u8 __TOSH_SAT16[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -356,18 +358,19 @@ u8 __TOSH_SAT16[] = {
     0x00, 0x00, 0x00, 0x00
 };
 
+extern u8 KERNEL_START;
+extern u8 KERNEL_END;
+
 void quickos_kernel_loop()
 {
     key buf;
     if (ps2kb_try_get_key(&buf) == 1)
         if (buf.type == KEY_release)
-        {
             if (buf.key == KEY_backspace)
-            {
                 printf("\b \b");
-            } else 
+            else 
                 printf("%c", buf.ascii);
-        }
+  __asm__ volatile ("hlt");
 }
 
 void quickos_kernel_entry(struct multiboot_info* multiboot2_info_structure) 
@@ -457,6 +460,66 @@ void quickos_kernel_entry(struct multiboot_info* multiboot2_info_structure)
         pic_unmask(12);
         kprintf("[PIC] IRQ12 unmasked\r\n");
     }
+
+    kprintf("[MMAP] start: 0x%X\r\n", (u32)mb2_retrieved.mmap);
+    kprintf("[MMAP] size: %d\r\n", mb2_retrieved.mmap->size);
+    kprintf("[MMAP] entry size: %d\r\n", mb2_retrieved.mmap->entry_size);
+    kprintf("[MMAP] tag size: %d\r\n", sizeof(struct multiboot_tag_mmap));
+    kprintf("[MMAP] entries size: %d\r\n", mb2_retrieved.mmap->size - sizeof(struct multiboot_tag_mmap));
+    kprintf("[MMAP] end: 0x%X\r\n", (u32)mb2_retrieved.mmap + mb2_retrieved.mmap->size);
+
+    void* biggest_usable_chunk_addr = NULL;
+    u32 biggest_usable_chunk_len = 0;
+    for (struct multiboot_mmap_entry* entry = mb2_retrieved.mmap->entries; (u32)entry < (u32)mb2_retrieved.mmap + mb2_retrieved.mmap->size; entry = (struct multiboot_mmap_entry*)((u32)entry + ((mb2_retrieved.mmap->entry_size + 7) & ~7)))
+    {
+        u32 len = entry->len;
+        if (entry->addr >= 0x100000000ULL) continue;
+        else if (entry->addr + entry->len >= 0x100000000ULL) len = 0x100000000ULL - entry->addr;
+        if (entry->len == 0) continue;
+
+        if (entry->type == MULTIBOOT_MEMORY_AVAILABLE)
+        {
+           if (biggest_usable_chunk_addr == NULL || (biggest_usable_chunk_addr != NULL && len > biggest_usable_chunk_len))
+           {
+             biggest_usable_chunk_addr = (void*)(u32)entry->addr;
+             biggest_usable_chunk_len = len;
+           }
+           kprintf("[MEM] found usable memory region: 0x%X, len %d\r\n", (u32)entry->addr, len);
+        }
+    }
+
+    if (biggest_usable_chunk_addr == NULL)
+    {
+      kprintf("[MEM] no usable memory regions found\r\n");
+      __asm__ volatile ("cli;hlt");
+    }
+
+    kprintf("[MEM] biggest usable memory region: 0x%X, len %d\r\n", (u32)biggest_usable_chunk_addr, (u32)biggest_usable_chunk_len);
+
+    void* kernel_start = &KERNEL_START;
+    void* kernel_end = &KERNEL_END;
+
+    kprintf("[MEM] kernel: 0x%X-0x%X\r\n", kernel_start, kernel_end);
+    if (kernel_start >= biggest_usable_chunk_addr && kernel_end <= (void*)(biggest_usable_chunk_addr + biggest_usable_chunk_len))
+    {
+      kprintf("[MEM] kernel & biggest usable memory region overlap, trying to handle overlap\r\n");
+      if (kernel_start == biggest_usable_chunk_addr)
+      {
+        biggest_usable_chunk_addr += kernel_end - kernel_start;
+        biggest_usable_chunk_len -= kernel_end - kernel_start;
+        kprintf("[MEM] handled kernel & biggest usable memory region overlap, new biggest usable memory region: 0x%X-0x%X\r\n", (u32)biggest_usable_chunk_addr, (u32)biggest_usable_chunk_addr + biggest_usable_chunk_len);
+      } else {
+        kprintf("[MEM] couldn't handle kernel & biggest usable memory region overlap\r\n");
+        __asm__ volatile ("cli;hlt");
+      }
+    }
+
+    alloc_memory_pool pool = {0};
+    pool.start = biggest_usable_chunk_addr;
+    pool.end = biggest_usable_chunk_addr + biggest_usable_chunk_len;
+    alloc_init(pool);
+
+    kprintf("[MEM] initialized allocator\r\n");
 
     printf("Welcome to qos!\r\n");
 

@@ -155,6 +155,7 @@ u8 ps2ctrl_get_type(u8 (*send_byte)(u8), u8 type[], u8* type_size) // [2]
     if (!send_byte(PS2CTRL_DEVICE_COMMAND_IDENTIFY)) return 0;
     *type_size = 0;
 
+    // this will take a while - expected.
     if (ps2ctrl_wait_output_buffer_full(1))
     {
         io_wait();

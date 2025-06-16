@@ -39,7 +39,7 @@ inject_bootloader: kernel
 
 .PHONY: run
 run: build
-	qemu-system-x86_64 -cdrom QuickOS.iso -boot d -d guest_errors,cpu_reset,int -debugcon file:/dev/stdout
+	qemu-system-x86_64 -cdrom QuickOS.iso -boot d -d guest_errors,cpu_reset,int -debugcon file:/dev/stdout -machine pc -vga std -m 256M
 
 .PHONY: clean
 clean: kernel inject_bootloader

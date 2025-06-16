@@ -8,7 +8,6 @@
 #include <cli.h>
 
 static struct {
-    u8 initialized;
     key key_buf[PS2_INPUT_BUF_SIZE];
     size key_buf_count;
     u8 got_e0;
@@ -21,8 +20,6 @@ static struct {
 
 u8 ps2kb_init()
 {
-    CURRENT_PS2_CTX.initialized = 0;
-
     CURRENT_PS2_CTX.key_buf_count = 0;
     CURRENT_PS2_CTX.got_e0 = 0;
     CURRENT_PS2_CTX.got_f0 = 0;
@@ -31,7 +28,6 @@ u8 ps2kb_init()
     CURRENT_PS2_CTX.got_ctrl = 0;
     CURRENT_PS2_CTX.got_caps = 0;
 
-    CURRENT_PS2_CTX.initialized = 1;
     return 1;
 }
 
@@ -176,6 +172,7 @@ key_code ps2kb_scancode_to_keycode(u8 scancode, u8 e0)
 
 void ps2kb_keyboard_interrupt()
 {
+    if (ps2ctrl_output_buffer_clear()) return;
     io_wait();
     u8 scancode = io_inb(0x60);
     io_wait();

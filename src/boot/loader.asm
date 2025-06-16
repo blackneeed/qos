@@ -23,8 +23,8 @@ dd -(0xE85250D6 + 0 + (multiboot2_header_end - multiboot2_header_start))
 
 align 8
 framebuffer_tag_start:  
-dw 5
-dw 0
+dw 5 ; fb tag type
+dw 1 ; optional ig since we have a vga fallback to print error
 dd framebuffer_tag_end - framebuffer_tag_start
 dd 0
 dd 0
@@ -32,14 +32,23 @@ dd 0
 framebuffer_tag_end:
 
 align 8
+mmap_tag_start:
+dw 6 ; mmap tag type
+dw 0
+dd mmap_tag_end - mmap_tag_start
+mmap_tag_end:
+
+end_tag_start:
+align 8
 dw 0
 dw 0
-dd 8
+dd end_tag_end - end_tag_start
+end_tag_end:
 multiboot2_header_end:
 
 section .text
 quickos_loader_entry:
-    cmp eax, 0x36d76289
+    cmp eax, 0x36D76289
     je quickos_loader_after_bootloader_magic_check
     cli
     .halt:
