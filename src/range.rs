@@ -1,6 +1,6 @@
 use core::option::Option::{Some, None};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Range {
     pub start: u32,
     pub end: u32,

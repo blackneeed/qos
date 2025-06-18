@@ -51,7 +51,6 @@ pub unsafe fn init_idt()
     }
 
     load_idt(&raw const IDTR);
-    println!("Loaded IDTR {:#016X}!", (&raw const IDTR) as u32);
 }
 
 unsafe extern "C" {

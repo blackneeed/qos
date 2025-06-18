@@ -9,3 +9,5 @@ pub mod multiboot;
 pub mod range;
 pub mod idt;
 pub mod panic;
+pub mod kernel;
+pub mod mem;
