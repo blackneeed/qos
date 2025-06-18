@@ -1,5 +1,5 @@
 /target
-qos_rust.elf
-qos_rust.iso
-build
-Cargo.lock
+/qos_rust.elf
+/qos_rust.iso
+/build
+/Cargo.lock
