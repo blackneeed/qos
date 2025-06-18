@@ -6,11 +6,12 @@
 
 extern crate alloc;
 extern crate core;
+use qos_rust::disk::ATADrive;
 use qos_rust::pic::{PIC, PIC_DRIVER};
 use qos_rust::range::Range;
 use qos_rust::multiboot::MultibootInfo;
 use linked_list_allocator::LockedHeap;
-use qos_rust::println;
+use qos_rust::{println, print};
 use qos_rust::panic::_hcf;
 use qos_rust::idt::init_idt;
 use qos_rust::mem::get_biggest_usable_pool;
@@ -40,11 +41,33 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
         *lock = Some(PIC::new());
         let pic = lock.as_mut().unwrap();
         pic.remap(32, 40);
-        pic.unmask(0);
 
         println!("Initialized PIC! {:?}:{:?}", pic.get_master_offset(), pic.get_slave_offset());
     }
 
+    match ATADrive::new(0) {
+        Some(drive) => {
+            println!("Initialized ATA PI/O disk 0.");
+            let mut buf: [u8;512] = [0u8;512];
+            for i in 0..drive.get_max_lba()
+            {
+                drive.read_lba(i, &mut buf);
+                print!("LBA {} 32 bytes: ", i);
+                for j in 0..32 {
+                    if j != 0
+                    {
+                        print!(" ");
+                    }
+                    print!("{:02X}", buf[j]); // big endian
+                }
+                println!();
+            }
+        }
+
+        None => {
+            println!("Could not initialize ATA PI/O disk 0.");
+        }
+    }
 
     loop { asm!("hlt") };
     //_hcf();

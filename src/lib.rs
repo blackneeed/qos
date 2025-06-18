@@ -12,3 +12,4 @@ pub mod panic;
 pub mod kernel;
 pub mod mem;
 pub mod pic;
+pub mod disk;
