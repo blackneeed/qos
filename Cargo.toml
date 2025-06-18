@@ -5,6 +5,7 @@ edition = "2024"
 build = "build.rs"
 
 [dependencies]
+fatfs = { default-features = false, features = ["alloc", "lfn"],  git = "https://github.com/rafalh/rust-fatfs" }
 linked_list_allocator = "0.10.5"
 spin = { version = "0.10.0", default-features = false, features = ["spin_mutex"] }
 
