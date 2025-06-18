@@ -4,7 +4,7 @@ use glob::glob;
 fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
 
-    for entry in glob("src/**/*.asm").expect("Failed to read glob pattern") {
+    for entry in glob("src/**/*.asm").unwrap() {
         match entry {
             Ok(path) => {
                 let asm_path = path.to_str().unwrap();
