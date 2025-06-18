@@ -1,5 +1,5 @@
 use core::mem::size_of;
-use crate::panic::_hcf;
+use crate::{panic::_hcf, pic::PIC_DRIVER};
 use crate::println;
 use core::marker::{Copy};
 
@@ -33,8 +33,30 @@ static mut IDTR: IDT32 = IDT32 { base: 0, limit: 0 };
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn interrupt_handler(interrupt_number: u32, _error_code: u32) {
-    println!("ISR {:03}, halting", interrupt_number);
-    _hcf();
+    if interrupt_number < 32
+    {
+        println!("Exception {:03}, halting", interrupt_number);
+        _hcf();
+    }
+
+    {
+        let mut lock = PIC_DRIVER.lock();
+
+        if let Some(pic) = lock.as_mut()
+        {
+            let master = pic.get_master_offset() as u32;
+            let slave = pic.get_slave_offset() as u32;
+            if interrupt_number >= master && interrupt_number <= master + 7
+            {
+                println!("IRQ {:03}", interrupt_number - master);
+                pic.eoi_master();
+            } else if interrupt_number <= slave && interrupt_number >= slave
+            {
+                println!("IRQ {:03}", interrupt_number - slave);
+                pic.eoi_slave();
+            }
+        }
+    }
 }
 
 pub unsafe fn init_idt()

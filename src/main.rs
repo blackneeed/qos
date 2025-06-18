@@ -6,6 +6,7 @@
 
 extern crate alloc;
 extern crate core;
+use qos_rust::pic::{PIC, PIC_DRIVER};
 use qos_rust::range::Range;
 use qos_rust::multiboot::MultibootInfo;
 use linked_list_allocator::LockedHeap;
@@ -14,6 +15,7 @@ use qos_rust::panic::_hcf;
 use qos_rust::idt::init_idt;
 use qos_rust::mem::get_biggest_usable_pool;
 use core::option::Option;
+use core::arch::asm;
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
@@ -33,5 +35,17 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
     init_idt();
     println!("Initialized IDT!");
 
-    _hcf();
+    {
+        let mut lock = PIC_DRIVER.lock();
+        *lock = Some(PIC::new());
+        let pic = lock.as_mut().unwrap();
+        pic.remap(32, 40);
+        pic.unmask(0);
+
+        println!("Initialized PIC! {:?}:{:?}", pic.get_master_offset(), pic.get_slave_offset());
+    }
+
+
+    loop { asm!("hlt") };
+    //_hcf();
 }
