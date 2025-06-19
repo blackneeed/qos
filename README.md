@@ -1,5 +1,5 @@
-# qos-rust
-qos-rust is a rewrite of qos but in rust, and better.
+# qos
+qos is a simple i686 kernel built in Rust.
 
 ## toolchain
 - install rustup

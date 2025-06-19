@@ -6,15 +6,15 @@
 
 extern crate alloc;
 extern crate core;
-use qos_rust::disk::ATADrive;
-use qos_rust::pic::{PIC, PIC_DRIVER};
-use qos_rust::range::Range;
-use qos_rust::multiboot::MultibootInfo;
+use qos::disk::ATADrive;
+use qos::pic::{PIC, PIC_DRIVER};
+use qos::range::Range;
+use qos::multiboot::MultibootInfo;
 use linked_list_allocator::LockedHeap;
-use qos_rust::{println};
-use qos_rust::panic::_hcf;
-use qos_rust::idt::init_idt;
-use qos_rust::mem::get_biggest_usable_pool;
+use qos::{println};
+use qos::panic::_hcf;
+use qos::idt::init_idt;
+use qos::mem::get_biggest_usable_pool;
 use core::alloc::{GlobalAlloc, Layout};
 use core::option::Option;
 use core::arch::asm;

@@ -2,5 +2,7 @@ target
 qos-rust.elf
 qos-rust.iso
 build
+run_nodisk.bat
+run.bat
 Cargo.lock
 disk.img
