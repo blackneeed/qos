@@ -1,4 +1,0 @@
-Third-party components used in this project:
-
-- cc-runtime: Licensed under Apache License v2.0 with LLVM Exceptions. See LICENSE.cc-runtime for full text. (https://codeberg.org/osdev/cc-runtime)
-- nanoprintf: Licensed under Unlicense and 0BSD. See LICENSE.nanoprintf for full text. (https://github.com/charlesnicholson/nanoprintf)
