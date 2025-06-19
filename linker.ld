@@ -1,32 +1,30 @@
-ENTRY(quickos_loader_entry)
+ENTRY(kloader_main)
 
 SECTIONS 
 {
-    
+    .multiboot ALIGN(4K) : {
+        *(.multiboot*)
+    }
+
     . = 1M;
-    KERNEL_START = .;
+    PROVIDE(KERNEL_START = .);
 
-    .text BLOCK(4K) : ALIGN(4K) {
-        *(.multiboot)
-        *(.text)
+    .text ALIGN(4K) : {
+        *(.text*)
     }
 
-    .data BLOCK(4K) : ALIGN(4K) {
-        *(.data)
+    .rodata ALIGN(4K) : {
+        *(.rodata*)
     }
 
-    .rodata BLOCK(4K) : ALIGN(4K) {
-        *(.rodata)
+    .data ALIGN(4K) : {
+        *(.data*)
     }
 
-    .bss BLOCK(4K) : ALIGN(4K) {
-        *(COMMON)
-        *(.bss)
-        *(.bootstrap_stack)
+    .bss ALIGN(4K) : {
+        *(COMMON*)
+        *(.bss*)
     }
 
-    .note-gnu-build-id BLOCK(4K) : ALIGN(4K) {
-        *(.note-gnu-build-id)
-    }
-    KERNEL_END = .;
+    PROVIDE(KERNEL_END = .);
 }

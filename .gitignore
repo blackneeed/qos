@@ -1,8 +1,6 @@
-QuickOS.iso
-QuickOS.elf
-.vscode/*
-!.vscode/tasks.json
-# ignore my debug shit
-bochs_cfg
-bochs_debug.bat
-bx_enh_dbg.ini
+target
+qos-rust.elf
+qos-rust.iso
+build
+Cargo.lock
+disk.img
