@@ -1,2 +1,2 @@
-"C:\Windows\System32\wsl.exe" bash -lc ./build.sh
-"C:\Program Files\qemu\qemu-system-x86_64.exe" -cdrom c:\Users\Marcel\Documents\programmer\qos\qos-rust.iso
+wsl bash -lc ./build.sh
+qemu-system-x86_64 -cdrom qos.iso -boot d -d guest_errors,cpu_reset,int -debugcon stdio -machine pc -vga std -m 4G -drive file=disk.img,if=ide,media=disk
