@@ -6,37 +6,43 @@
 
 extern crate alloc;
 extern crate core;
-use qos::disk::ATADrive;
-use qos::pic::{PIC, PIC_DRIVER};
-use qos::range::Range;
-use qos::multiboot::MultibootInfo;
-use linked_list_allocator::LockedHeap;
-use qos::{println};
-use qos::panic::_hcf;
-use qos::idt::init_idt;
-use qos::mem::get_biggest_usable_pool;
-use core::alloc::{GlobalAlloc, Layout};
-use core::option::Option;
-use core::arch::asm;
-use fatfs::{FileSystem, FsOptions, Read};
 
-#[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
+pub mod allocator;
+pub mod disk;
+pub mod idt;
+pub mod io;
+pub mod kernel;
+pub mod mem;
+pub mod multiboot;
+pub mod panic;
+pub mod pic;
+pub mod range;
+pub mod vga;
+
+use allocator::initialize_allocator;
+use core::arch::asm;
+use core::option::Option;
+use disk::ATADrive;
+use idt::initialize_idt;
+use mem::get_biggest_usable_pool;
+use multiboot::MultibootInfo;
+use panic::_hcf;
+use pic::{PIC, PIC_DRIVER};
+use range::Range;
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
     let biggest_usable_memory_pool: Option<Range> = get_biggest_usable_pool(mb2_info);
-    if biggest_usable_memory_pool.is_none()
-    {
+    if biggest_usable_memory_pool.is_none() {
         println!("No usable memory pools!");
         _hcf();
     }
 
-    ALLOCATOR.lock().init(biggest_usable_memory_pool.clone().unwrap().start as *mut u8, biggest_usable_memory_pool.clone().unwrap().end as usize - biggest_usable_memory_pool.clone().unwrap().start as usize);
-    println!("Initialized allocator!");
+    initialize_allocator(biggest_usable_memory_pool.unwrap());
+    println!("Initialized allocator");
 
-    init_idt();
-    println!("Initialized IDT!");
+    initialize_idt();
+    println!("Initialized IDT");
 
     {
         let mut lock = PIC_DRIVER.lock();
@@ -44,66 +50,20 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
         let pic = lock.as_mut().unwrap();
         pic.remap(32, 40);
 
-        println!("Initialized PIC! {:?}:{:?}", pic.get_master_offset(), pic.get_slave_offset());
+        println!("Initialized PIC");
     }
 
-    for id in 0..4
-    {
-        match ATADrive::new(id) {
-            Some(drive) => {
-                println!("Initialized ATA PI/O disk {}.", id);
-                if let Ok(fs) = FileSystem::new(drive, FsOptions::new())
-                {
-                    println!("Initialized FS on ATA PI/O disk {}.", id);
-
-                    for i in fs.root_dir().iter()
-                    {
-                        println!("Enumerating root directory: ");
-                        if let Ok(dir_ent) = i
-                        {
-                            println!("\t{}B {} {}", dir_ent.len(), match dir_ent.is_file() {
-                                true => "FIL",
-                                false => "DIR"
-                            }, dir_ent.file_name());
-                            if dir_ent.is_file()
-                            {
-                                if let Ok(mut file) = fs.root_dir().open_file(dir_ent.file_name().as_str())
-                                {
-                                    let buf = ALLOCATOR.alloc(Layout::from_size_align(dir_ent.len().try_into().expect("Could not convert dir_ent.len() into usize from u64."), 8).unwrap());
-                                    if buf.is_null()
-                                    {
-                                        println!("Could not read file: alloc returned null");
-                                    } else
-                                    {
-                                        let buf_slice = core::slice::from_raw_parts_mut(buf, dir_ent.len().try_into().expect("Could not convert dir_ent.len() into usize from u64."));
-                                        if let Ok(read) = file.read(buf_slice)
-                                        {
-                                            if (read as u64) < dir_ent.len()
-                                            {
-                                                println!("Could not read file: read bytes {} < {}", read as u64, dir_ent.len())
-                                            }
-                                            println!("Contents: {}", core::str::from_utf8(buf_slice).expect("Could not get string from file contents"));
-                                        } else {
-                                            println!("Could not read file");
-                                        }
-                                    }
-                                } else {
-                                    println!("Could not read file");
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    println!("Couldn't initialize FS on ATA PI/O disk {}.", id);
-                }
-            }
-    
-            None => {
-                println!("Could not initialize ATA PI/O disk {}.", id);
-            }
+    let mut inited = 0u8;
+    for id in 0..4 {
+        if ATADrive::new(id).is_some() {
+            // fine clippy ill use your .is_some()
+            inited += 1;
         }
     }
 
-    loop { asm!("hlt") };
-    //_hcf();
+    println!("Initialized {} ATA PIO disks", inited);
+
+    loop {
+        asm!("hlt")
+    }
 }

@@ -2,7 +2,5 @@ target
 qos.elf
 qos.iso
 build
-run_nodisk.bat
-run.bat
 Cargo.lock
 disk.img

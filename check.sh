@@ -1,1 +1,0 @@
-cargo check -Z build-std=core,alloc

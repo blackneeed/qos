@@ -1,7 +1,7 @@
-use core::mem::size_of;
-use crate::{panic::_hcf, pic::PIC_DRIVER};
 use crate::println;
-use core::marker::{Copy};
+use crate::{panic::_hcf, pic::PIC_DRIVER};
+use core::marker::Copy;
+use core::mem::size_of;
 
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
@@ -10,14 +10,14 @@ pub struct IDT32Entry {
     kernel_cs: u16,
     reserved: u8,
     attrs: u8,
-    isr_high: u16
+    isr_high: u16,
 }
 
 #[repr(C, packed)]
 #[derive(Debug)]
 pub struct IDT32 {
     limit: u16,
-    base: u32
+    base: u32,
 }
 
 unsafe extern "C" {
@@ -27,14 +27,21 @@ unsafe extern "C" {
 #[repr(align(8))]
 struct AlignedIDT([IDT32Entry; 256]); // fuck you rust
 
-static mut IDT: AlignedIDT = AlignedIDT([IDT32Entry { isr_low: 0, isr_high: 0, kernel_cs: 0, reserved: 0, attrs: 0 }; 256]);
+static mut IDT: AlignedIDT = AlignedIDT(
+    [IDT32Entry {
+        isr_low: 0,
+        isr_high: 0,
+        kernel_cs: 0,
+        reserved: 0,
+        attrs: 0,
+    }; 256],
+);
 
 static mut IDTR: IDT32 = IDT32 { base: 0, limit: 0 };
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn interrupt_handler(interrupt_number: u32, _error_code: u32) {
-    if interrupt_number < 32
-    {
+    if interrupt_number < 32 {
         println!("Exception {:03}, halting", interrupt_number);
         _hcf();
     }
@@ -42,16 +49,13 @@ pub unsafe extern "C" fn interrupt_handler(interrupt_number: u32, _error_code: u
     {
         let mut lock = PIC_DRIVER.lock();
 
-        if let Some(pic) = lock.as_mut()
-        {
+        if let Some(pic) = lock.as_mut() {
             let master = pic.get_master_offset() as u32;
             let slave = pic.get_slave_offset() as u32;
-            if interrupt_number >= master && interrupt_number <= master + 7
-            {
+            if interrupt_number >= master && interrupt_number <= master + 7 {
                 println!("IRQ {:03}", interrupt_number - master);
                 pic.eoi_master();
-            } else if interrupt_number <= slave && interrupt_number >= slave
-            {
+            } else if interrupt_number <= slave && interrupt_number >= slave {
                 println!("IRQ {:03}", interrupt_number - slave);
                 pic.eoi_slave();
             }
@@ -59,8 +63,7 @@ pub unsafe extern "C" fn interrupt_handler(interrupt_number: u32, _error_code: u
     }
 }
 
-pub unsafe fn init_idt()
-{
+pub unsafe fn initialize_idt() {
     IDTR.base = &raw const IDT as *const _ as u32;
     IDTR.limit = ((size_of::<IDT32Entry>() as u16) * 256) - 1;
 
@@ -79,3 +82,4 @@ unsafe extern "C" {
     pub unsafe fn load_idt(idt: *const IDT32);
     pub unsafe fn store_idt(dest: *mut IDT32);
 }
+
