@@ -1,4 +1,4 @@
-use crate::io::outb;
+use crate::ioport::outb;
 use core::fmt::{self, Arguments, Write};
 use core::format_args;
 use core::marker::Send;
@@ -99,18 +99,6 @@ pub fn vga_println(args: Arguments<'_>) {
     vga_print(format_args!("\r\n"));
 }
 
-#[macro_export]
-macro_rules! print {
-    ($($arg:tt)*) => ($crate::vga::vga_print(format_args!($($arg)*)));
-}
-
-#[macro_export]
-macro_rules! println {
-    () => ($crate::print!("\r\n"));
-    ($($arg:tt)*) => ($crate::vga::vga_println(format_args!($($arg)*)));
-}
-
 unsafe impl Send for VGA {} // fuck you rust
 
 static VGA_WRITER: Mutex<VGA> = Mutex::new(VGA::new());
-

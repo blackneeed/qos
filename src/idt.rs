@@ -55,7 +55,7 @@ pub unsafe extern "C" fn interrupt_handler(interrupt_number: u32, _error_code: u
             if interrupt_number >= master && interrupt_number <= master + 7 {
                 println!("IRQ {:03}", interrupt_number - master);
                 pic.eoi_master();
-            } else if interrupt_number <= slave && interrupt_number >= slave {
+            } else if interrupt_number >= slave && interrupt_number <= slave + 7 {
                 println!("IRQ {:03}", interrupt_number - slave);
                 pic.eoi_slave();
             }
@@ -82,4 +82,3 @@ unsafe extern "C" {
     pub unsafe fn load_idt(idt: *const IDT32);
     pub unsafe fn store_idt(dest: *mut IDT32);
 }
-

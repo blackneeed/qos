@@ -9,8 +9,10 @@ extern crate core;
 
 pub mod allocator;
 pub mod disk;
+pub mod e9;
 pub mod idt;
 pub mod io;
+pub mod ioport;
 pub mod kernel;
 pub mod mem;
 pub mod multiboot;
@@ -21,26 +23,15 @@ pub mod vga;
 
 use allocator::initialize_allocator;
 use core::arch::asm;
-use core::option::Option;
 use disk::ATADrive;
 use idt::initialize_idt;
-use mem::get_biggest_usable_pool;
+use mem::{get_biggest_usable_pool, get_memory_map_tag};
 use multiboot::MultibootInfo;
 use panic::_hcf;
 use pic::{PIC, PIC_DRIVER};
-use range::Range;
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
-    let biggest_usable_memory_pool: Option<Range> = get_biggest_usable_pool(mb2_info);
-    if biggest_usable_memory_pool.is_none() {
-        println!("No usable memory pools!");
-        _hcf();
-    }
-
-    initialize_allocator(biggest_usable_memory_pool.unwrap());
-    println!("Initialized allocator");
-
     initialize_idt();
     println!("Initialized IDT");
 
@@ -52,6 +43,25 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
 
         println!("Initialized PIC");
     }
+
+    let memory_map_tag = get_memory_map_tag(mb2_info);
+    if memory_map_tag.is_none() {
+        println!("No memory map tag found!");
+        _hcf();
+    }
+
+    println!("Found memory map tag");
+
+    let biggest_usable_memory_pool = get_biggest_usable_pool(memory_map_tag.unwrap());
+    if biggest_usable_memory_pool.is_none() {
+        println!("No usable memory pools!");
+        _hcf();
+    }
+
+    println!("Found memory pool");
+
+    initialize_allocator(biggest_usable_memory_pool.unwrap());
+    println!("Initialized allocator");
 
     let mut inited = 0u8;
     for id in 0..4 {

@@ -2,8 +2,8 @@ ENTRY(kloader_main)
 
 SECTIONS 
 {
-    .multiboot ALIGN(4K) : {
-        *(.multiboot*)
+   .multiboot ALIGN(4K) : {
+      KEEP(*(.multiboot*))
     }
 
     . = 1M;

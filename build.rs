@@ -1,5 +1,5 @@
-use std::{process::Command, env};
 use glob::glob;
+use std::{env, process::Command};
 
 fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
@@ -9,7 +9,6 @@ fn main() {
             Ok(path) => {
                 let asm_path = path.to_str().unwrap();
                 let file_stem = path.file_stem().unwrap().to_str().unwrap();
-
                 let obj_path = format!("{}/{}.o", out_dir, file_stem);
 
                 let status = Command::new("nasm")
