@@ -10,6 +10,7 @@ extern crate core;
 pub mod allocator;
 pub mod disk;
 pub mod e9;
+pub mod fb;
 pub mod idt;
 pub mod io;
 pub mod ioport;
@@ -23,25 +24,23 @@ pub mod vga;
 
 use allocator::initialize_allocator;
 use core::arch::asm;
-use disk::ATADrive;
 use idt::initialize_idt;
 use mem::{get_biggest_usable_pool, get_memory_map_tag};
 use multiboot::MultibootInfo;
 use panic::_hcf;
 use pic::{PIC, PIC_DRIVER};
 
+use crate::fb::{Framebuffer, get_framebuffer_tag};
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
     initialize_idt();
-    println!("Initialized IDT");
 
     {
         let mut lock = PIC_DRIVER.lock();
         *lock = Some(PIC::new());
         let pic = lock.as_mut().unwrap();
         pic.remap(32, 40);
-
-        println!("Initialized PIC");
     }
 
     let memory_map_tag = get_memory_map_tag(mb2_info);
@@ -50,28 +49,33 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
         _hcf();
     }
 
-    println!("Found memory map tag");
-
     let biggest_usable_memory_pool = get_biggest_usable_pool(memory_map_tag.unwrap());
     if biggest_usable_memory_pool.is_none() {
         println!("No usable memory pools!");
         _hcf();
     }
 
-    println!("Found memory pool");
-
     initialize_allocator(biggest_usable_memory_pool.unwrap());
-    println!("Initialized allocator");
 
-    let mut inited = 0u8;
-    for id in 0..4 {
-        if ATADrive::new(id).is_some() {
-            // fine clippy ill use your .is_some()
-            inited += 1;
-        }
+    let framebuffer_tag = get_framebuffer_tag(mb2_info);
+    if framebuffer_tag.is_none() {
+        println!("No framebuffer tag found!");
+        _hcf();
     }
 
-    println!("Initialized {} ATA PIO disks", inited);
+    let framebuffer = Framebuffer::from_multiboot(framebuffer_tag.unwrap());
+    if framebuffer.is_none() {
+        println!("Could not create framebuffer!");
+        _hcf();
+    }
+
+    let fb = framebuffer.unwrap();
+
+    for i in 0..500 {
+        fb.put_pixel(0xFF0000, i, i);
+    }
+
+    fb.swap();
 
     loop {
         asm!("hlt")
