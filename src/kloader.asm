@@ -9,6 +9,29 @@ gdt_descriptor:
     dw $ - gdt_start - 1
     dd gdt_start
 
+section .multiboot
+align 8
+multiboot2_start:
+dd 0xE85250D6
+dd 0
+dd multiboot2_end - multiboot2_start
+dd -(0xE85250D6 + 0 + (multiboot2_end - multiboot2_start))
+
+align 8
+multiboot2_mmap_tag_start:
+dw 6
+dw 0
+dd multiboot2_mmap_tag_end - multiboot2_mmap_tag_start
+multiboot2_mmap_tag_end:
+
+align 8
+multiboot2_end_tag_start:
+dw 0
+dw 0
+dd multiboot2_end_tag_end - multiboot2_end_tag_start
+multiboot2_end_tag_end:
+multiboot2_end:
+
 section .text
 kloader_main:
     mov [mb2_info_ptr], ebx

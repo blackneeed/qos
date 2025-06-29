@@ -1,21 +1,27 @@
-use core::arch::asm;
+use crate::vga::{vga_print, vga_println};
+use crate::e9::{e9_print, e9_println};
+use core::fmt::Arguments;
 
-pub unsafe fn inb(port: u16) -> u8 {
-    let rv: u8;
-    asm!("in al, dx", out("al") rv, in("dx") port);
-    return rv;
+pub fn print(args: Arguments<'_>)
+{
+    e9_print(args);
+    vga_print(args);
 }
 
-pub unsafe fn outb(port: u16, val: u8) {
-    asm!("out dx, al", in("al") val, in("dx") port);
+pub fn println(args: Arguments<'_>)
+{
+    e9_println(args);
+    vga_println(args);
 }
 
-pub unsafe fn inw(port: u16) -> u16 {
-    let rv: u16;
-    asm!("in ax, dx", out("ax") rv, in("dx") port);
-    return rv;
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::vga::vga_print(format_args!($($arg)*)));
 }
 
-pub unsafe fn outw(port: u16, val: u16) {
-    asm!("out dx, ax", in("ax") val, in("dx") port);
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\r\n"));
+    ($($arg:tt)*) => ($crate::vga::vga_println(format_args!($($arg)*)));
 }
+

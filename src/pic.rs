@@ -1,6 +1,6 @@
-use crate::io::{inb, outb};
-use spin::Mutex;
+use crate::ioport::{inb, outb};
 use core::option::Option::{self, None};
+use spin::Mutex;
 
 pub struct PIC {
     offset_master: u8,
@@ -8,9 +8,11 @@ pub struct PIC {
 }
 
 impl PIC {
-    pub const fn new() -> PIC
-    {
-        return PIC { offset_master: 0, offset_slave: 7 }; // x86 defaults
+    pub const fn new() -> PIC {
+        return PIC {
+            offset_master: 0,
+            offset_slave: 7,
+        }; // x86 defaults
     }
 
     pub fn get_master_offset(&self) -> u8 {
@@ -21,13 +23,11 @@ impl PIC {
         return self.offset_slave;
     }
 
-    pub fn remap(&mut self, offset_master: u8, offset_slave: u8)
-    {
-        if self.offset_master == offset_master && self.offset_slave == offset_slave
-        {
+    pub fn remap(&mut self, offset_master: u8, offset_slave: u8) {
+        if self.offset_master == offset_master && self.offset_slave == offset_slave {
             return;
         }
-        
+
         unsafe {
             // master
             outb(0x20, 0x11); // init
@@ -48,46 +48,38 @@ impl PIC {
         self.offset_slave = offset_slave;
     }
 
-    pub fn eoi_master(&self)
-    {
-        unsafe { outb(0x20,0x20) };
+    pub fn eoi_master(&self) {
+        unsafe { outb(0x20, 0x20) };
     }
 
-    pub fn eoi_slave(&mut self)
-    {
-        unsafe { outb(0xA0,0x20) };
+    pub fn eoi_slave(&mut self) {
+        unsafe { outb(0xA0, 0x20) };
         self.eoi_master();
     }
 
-    fn read_mask(&self) -> u8
-    {
+    fn read_mask(&self) -> u8 {
         unsafe {
             return inb(0x21) | (inb(0xA1) << 4);
         }
     }
 
-    fn write_mask(&self, mask: u8)
-    {
+    fn write_mask(&self, mask: u8) {
         unsafe {
             outb(0x21, mask & 0xFF);
             outb(0xA1, mask >> 4);
         }
     }
 
-    pub fn mask(&mut self, irq: u8)
-    {
-        if irq > 15
-        {
+    pub fn mask(&mut self, irq: u8) {
+        if irq > 15 {
             return;
         }
 
         self.write_mask(self.read_mask() | (1 << irq));
     }
 
-    pub fn unmask(&mut self, irq: u8)
-    {
-        if irq > 15
-        {
+    pub fn unmask(&mut self, irq: u8) {
+        if irq > 15 {
             return;
         }
 
@@ -96,3 +88,4 @@ impl PIC {
 }
 
 pub static PIC_DRIVER: Mutex<Option<PIC>> = Mutex::new(None);
+
