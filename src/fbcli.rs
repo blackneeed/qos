@@ -211,7 +211,7 @@ impl FramebufferCLI {
         for c in self.chars.clone() {
             match c {
                 b'\n' => {
-                    y += self.fb.height;
+                    y += self.font.height;
 
                     if y >= self.fb.height {
                         y = 0;
