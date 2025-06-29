@@ -1,7 +1,5 @@
 use crate::kernel::{KERNEL_END, KERNEL_START};
-use crate::multiboot::{
-    MultibootInfo, MultibootInfoTag, MultibootMemoryMapEntry, MultibootMemoryMapTag,
-};
+use crate::multiboot::{MultibootInfo, MultibootMemoryMapEntry, MultibootMemoryMapTag, get_tag};
 use crate::range::{ChopResult, Range};
 use core::cmp::min;
 use core::option::Option::{self, None, Some};
@@ -9,24 +7,7 @@ use core::option::Option::{self, None, Some};
 pub unsafe fn get_memory_map_tag(
     mb2_info: *const MultibootInfo,
 ) -> Option<*const MultibootMemoryMapTag> {
-    if (*mb2_info).total_size as usize == core::mem::size_of::<MultibootInfo>() {
-        return None;
-    }
-
-    let mut tag_ptr = (&raw const (*mb2_info).tags) as *const MultibootInfoTag;
-    loop {
-        //println!("{:?}", *tag_ptr);
-        if (*tag_ptr).type_ == 0 {
-            return None;
-        }
-
-        if (*tag_ptr).type_ == 6 {
-            return Some(tag_ptr as *const MultibootMemoryMapTag);
-        }
-
-        tag_ptr = (tag_ptr as *const u8).add(((*tag_ptr).size as usize + 7) & !7)
-            as *const MultibootInfoTag;
-    }
+    return get_tag(mb2_info, 6).map(|x| x as *const MultibootMemoryMapTag);
 }
 
 pub unsafe fn get_biggest_usable_pool(mmap_tag: *const MultibootMemoryMapTag) -> Option<Range> {

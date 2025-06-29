@@ -25,6 +25,16 @@ dd multiboot2_mmap_tag_end - multiboot2_mmap_tag_start
 multiboot2_mmap_tag_end:
 
 align 8
+multiboot2_fb_tag_start:
+dw 5
+dw 0
+dd multiboot2_fb_tag_end - multiboot2_fb_tag_start
+dd 0
+dd 0
+dd 32
+multiboot2_fb_tag_end:
+
+align 8
 multiboot2_end_tag_start:
 dw 0
 dw 0
