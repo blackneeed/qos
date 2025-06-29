@@ -1,4 +1,8 @@
-use crate::multiboot::{MultibootFramebufferTag, MultibootInfo, get_tag};
+use crate::{
+    font::Font,
+    multiboot::{MultibootFramebufferTag, MultibootInfo, get_tag},
+};
+
 use alloc::alloc::alloc;
 use core::alloc::Layout;
 
@@ -109,6 +113,42 @@ impl Framebuffer {
         *((self
             .double_fb
             .add((y * self.pitch + x * self.bpp_b as u32) as usize)) as *mut u32) = r | g | b;
+    }
+
+    pub unsafe fn put_char(
+        &mut self,
+        font: Font,
+        chr: u8,
+        col: u32,
+        bgcol: u32,
+        x: u32,
+        y: u32,
+    ) -> Result<(), ()> {
+        if let Some(glyph) = font.retrieve_glyph(chr) {
+            if let Some(data) = &glyph.data {
+                for fy in 0..font.height {
+                    for fx in 0..font.width {
+                        for fb in 0u8..8 {
+                            let idx: usize;
+
+                            if fx == 0 {
+                                idx = fy as usize;
+                            } else {
+                                idx = fx as usize * fy as usize;
+                            }
+
+                            if (data[idx] & ((1 << 7) >> fb)) > 0 {
+                                self.put_pixel(col, x + fx as u32 * 7 + fb as u32, y + fy as u32);
+                            } else {
+                                self.put_pixel(bgcol, x + fx as u32 * 7 + fb as u32, y + fy as u32);
+                            }
+                        }
+                    }
+                }
+                return Ok(());
+            }
+        }
+        return Err(());
     }
 
     pub unsafe fn swap(&self) {
