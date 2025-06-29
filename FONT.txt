@@ -1,0 +1,4 @@
+Glyph Width u8 (1 = 8PX)
+Glyph Height u8
+Glyph Count u8
+1B(8PX) * Glyph Width * Glyph Height * Glyph Count
