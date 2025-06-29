@@ -1,4 +1,4 @@
-bits 32
+[bits 32]
 global kloader_main
 
 gdt_start:

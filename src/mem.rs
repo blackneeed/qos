@@ -71,3 +71,7 @@ pub unsafe fn get_biggest_usable_pool(mmap_tag: *const MultibootMemoryMapTag) ->
 
     return Some(biggest_usable_memory_pool);
 }
+
+unsafe extern "C" {
+    pub fn memset32(dst: *mut u32, val: u32, n: u32);
+}

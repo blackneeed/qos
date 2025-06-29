@@ -1,5 +1,6 @@
 use crate::{
     font::Font,
+    mem::memset32,
     multiboot::{MultibootFramebufferTag, MultibootInfo, get_tag},
 };
 
@@ -12,7 +13,7 @@ pub unsafe fn get_framebuffer_tag(
     return get_tag(mb2_info, 8).map(|x| x as *const MultibootFramebufferTag);
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Framebuffer {
     pub width: u32,
     pub height: u32,
@@ -93,7 +94,7 @@ impl Framebuffer {
         );
     }
 
-    #[inline]
+    #[inline(always)]
     fn conv_color(&self, value: u8, n: u8) -> u8 {
         if n == 8 {
             return value;
@@ -101,8 +102,8 @@ impl Framebuffer {
         return ((value as u32 * ((1u32 << n as u32) - 1u32) + 128u32) >> 8) as u8;
     }
 
-    pub unsafe fn put_pixel(&self, col: u32, x: u32, y: u32) // 0xAARRGGBB (alpha unhandled)
-    {
+    #[inline(always)]
+    fn color_packed(&self, col: u32) -> u32 {
         let r = (self.conv_color(((col >> 16) & 0xFF) as u8, self.red_mask_size) as u32)
             << self.red_field_pos;
         let g = (self.conv_color(((col >> 8) & 0xFF) as u8, self.green_mask_size) as u32)
@@ -110,9 +111,19 @@ impl Framebuffer {
         let b = (self.conv_color((col & 0xFF) as u8, self.blue_mask_size) as u32)
             << self.blue_field_pos;
 
-        *((self
+        return r | g | b;
+    }
+
+    #[inline(always)]
+    unsafe fn get_pixel_ptr(&self, x: u32, y: u32) -> *mut u32 {
+        return (self
             .double_fb
-            .add((y * self.pitch + x * self.bpp_b as u32) as usize)) as *mut u32) = r | g | b;
+            .add((y * self.pitch + x * self.bpp_b as u32) as usize)) as *mut u32;
+    }
+
+    pub unsafe fn put_pixel(&self, col: u32, x: u32, y: u32) // 0xAARRGGBB (alpha unhandled)
+    {
+        *self.get_pixel_ptr(x, y) = self.color_packed(col);
     }
 
     pub unsafe fn put_char(
@@ -149,6 +160,10 @@ impl Framebuffer {
             }
         }
         return Err(());
+    }
+
+    pub unsafe fn draw_line(&mut self, col: u32, w: u32, x: u32, y: u32) {
+        memset32(self.get_pixel_ptr(x, y), self.color_packed(col), w);
     }
 
     pub unsafe fn swap(&self) {
