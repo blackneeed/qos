@@ -64,7 +64,7 @@ kloader_main:
     jmp kmain
 
 section .bss
-resb 16384
+resb 65536 
 stack:
 
 mb2_info_ptr:
