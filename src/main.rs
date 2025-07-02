@@ -76,7 +76,7 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
 
     let mut fbcli = FramebufferCLI::new(framebuffer);
 
-    fbcli.write_str("Hello world!\r\naaaaaaaaaaaaaaaaaaaaaaaa\r\nbbbbbbbbbbbbbbb\r\ncccccccccccccccccc\r\nasdasdasd");
+    fbcli.write_str("hello world\r\n");
     fbcli.draw();
     framebuffer.swap();
 
