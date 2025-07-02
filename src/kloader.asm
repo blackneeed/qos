@@ -1,5 +1,5 @@
 [bits 32]
-global kloader_main
+[global kloader_main]
 
 gdt_start:
     dq 0
@@ -64,7 +64,7 @@ kloader_main:
     jmp kmain
 
 section .bss
-resb 65536 
+resb 65536
 stack:
 
 mb2_info_ptr:
