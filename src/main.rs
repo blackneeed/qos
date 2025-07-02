@@ -3,6 +3,7 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 #![allow(improper_ctypes)]
 #![feature(proc_macro_hygiene)]
+#![feature(ascii_char)]
 
 extern crate alloc;
 extern crate core;
@@ -11,6 +12,7 @@ pub mod allocator;
 pub mod disk;
 pub mod e9;
 pub mod fb;
+pub mod fbcli;
 pub mod font;
 pub mod idt;
 pub mod io;
@@ -26,12 +28,14 @@ pub mod vga;
 use allocator::initialize_allocator;
 use core::arch::asm;
 use fb::{Framebuffer, get_framebuffer_tag};
+use fbcli::FramebufferCLI;
 use idt::initialize_idt;
 use mem::{get_biggest_usable_pool, get_memory_map_tag};
 use multiboot::MultibootInfo;
 use panic::_hcf;
 use pic::{PIC, PIC_DRIVER};
 
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
     {
         let mut lock = PIC_DRIVER.lock();
@@ -68,7 +72,13 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
         _hcf();
     }
 
-    let mut framebuffer = framebuffer_.unwrap();
+    let framebuffer = framebuffer_.unwrap();
+
+    let mut fbcli = FramebufferCLI::new(framebuffer);
+
+    fbcli.write_str("hello world\r\n");
+    fbcli.draw();
+    framebuffer.swap();
 
     loop {
         asm!("hlt")
