@@ -7,7 +7,7 @@ pub struct E9;
 
 impl E9 {
     pub const fn new() -> E9 {
-        return E9 {};
+        E9 {}
     }
 
     pub unsafe fn write(&mut self, chr: u8) {

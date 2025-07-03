@@ -7,7 +7,7 @@ use core::option::Option::{self, None, Some};
 pub unsafe fn get_memory_map_tag(
     mb2_info: *const MultibootInfo,
 ) -> Option<*const MultibootMemoryMapTag> {
-    return get_tag(mb2_info, 6).map(|x| x as *const MultibootMemoryMapTag);
+    get_tag(mb2_info, 6).map(|x| x as *const MultibootMemoryMapTag)
 }
 
 pub unsafe fn get_biggest_usable_pool(mmap_tag: *const MultibootMemoryMapTag) -> Option<Range> {
@@ -69,7 +69,7 @@ pub unsafe fn get_biggest_usable_pool(mmap_tag: *const MultibootMemoryMapTag) ->
         }
     }
 
-    return Some(biggest_usable_memory_pool);
+    Some(biggest_usable_memory_pool)
 }
 
 unsafe extern "C" {

@@ -15,17 +15,17 @@ pub struct VGA {
 
 impl VGA {
     pub const fn new() -> VGA {
-        return VGA {
+        VGA {
             vga_ptr: 0xb8000 as *mut u8,
             x: 0,
             y: 0,
             w: 80,
             h: 25,
-        };
+        }
     }
 
     unsafe fn get_ptr(&mut self) -> *mut u8 {
-        return self.vga_ptr.add(((self.y * self.w + self.x) * 2) as usize);
+        self.vga_ptr.add(((self.y * self.w + self.x) * 2) as usize)
     }
 
     unsafe fn _write(&mut self, chr: u8) {
@@ -39,7 +39,7 @@ impl VGA {
         outb(0x3D5, abs_pos as u8);
     }
 
-    pub unsafe fn write(&mut self, chr: u8) {
+    pub fn write(&mut self, chr: u8) {
         match chr {
             b'\r' => {
                 self.x = 0;
@@ -49,19 +49,20 @@ impl VGA {
             }
             b'\t' => {
                 for _ in 0..4 {
-                    self._write(b' ');
+                    unsafe {
+                        self._write(b' ');
+                    }
                 }
             }
-            _ => {
+            _ => unsafe {
                 self._write(chr);
-            }
+            },
         }
     }
 
-    pub unsafe fn write_str(&mut self, string: &str) {
-        let str_ptr = string.as_ptr();
-        for i in 0..string.len() {
-            self.write(*str_ptr.add(i))
+    pub fn write_str(&mut self, string: &str) {
+        for c in string.as_bytes() {
+            self.write(*c);
         }
     }
 
@@ -83,9 +84,7 @@ impl VGA {
 
 impl Write for VGA {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        unsafe {
-            self.write_str(s);
-        }
+        self.write_str(s);
         Ok(())
     }
 }

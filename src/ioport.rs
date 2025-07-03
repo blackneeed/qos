@@ -3,7 +3,7 @@ use core::arch::asm;
 pub unsafe fn inb(port: u16) -> u8 {
     let rv: u8;
     asm!("in al, dx", out("al") rv, in("dx") port);
-    return rv;
+    rv
 }
 
 pub unsafe fn outb(port: u16, val: u8) {
@@ -13,7 +13,7 @@ pub unsafe fn outb(port: u16, val: u8) {
 pub unsafe fn inw(port: u16) -> u16 {
     let rv: u16;
     asm!("in ax, dx", out("ax") rv, in("dx") port);
-    return rv;
+    rv
 }
 
 pub unsafe fn outw(port: u16, val: u16) {
@@ -23,7 +23,7 @@ pub unsafe fn outw(port: u16, val: u16) {
 pub unsafe fn inl(port: u16) -> u32 {
     let rv: u32;
     asm!("in eax, dx", out("eax") rv, in("dx") port);
-    return rv;
+    rv
 }
 
 pub unsafe fn outl(port: u16, val: u32) {

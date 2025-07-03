@@ -9,18 +9,18 @@ pub struct PIC {
 
 impl PIC {
     pub const fn new() -> PIC {
-        return PIC {
+        PIC {
             offset_master: 0,
             offset_slave: 7,
-        }; // x86 defaults
+        } // x86 defaults
     }
 
     pub fn get_master_offset(&self) -> u8 {
-        return self.offset_master;
+        self.offset_master
     }
 
     pub fn get_slave_offset(&self) -> u8 {
-        return self.offset_slave;
+        self.offset_slave
     }
 
     pub fn remap(&mut self, offset_master: u8, offset_slave: u8) {
@@ -58,14 +58,12 @@ impl PIC {
     }
 
     fn read_mask(&self) -> u8 {
-        unsafe {
-            return inb(0x21) | (inb(0xA1) << 4);
-        }
+        unsafe { inb(0x21) | (inb(0xA1) << 4) }
     }
 
     fn write_mask(&self, mask: u8) {
         unsafe {
-            outb(0x21, mask & 0xFF);
+            outb(0x21, mask & 0xF);
             outb(0xA1, mask >> 4);
         }
     }
@@ -88,4 +86,3 @@ impl PIC {
 }
 
 pub static PIC_DRIVER: Mutex<Option<PIC>> = Mutex::new(None);
-

@@ -2,6 +2,10 @@
 #![no_main]
 #![allow(unsafe_op_in_unsafe_fn)]
 #![allow(improper_ctypes)]
+#![allow(clippy::missing_safety_doc)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::result_unit_err)]
+#![allow(clippy::too_many_arguments)]
 #![feature(proc_macro_hygiene)]
 #![feature(ascii_char)]
 
@@ -9,6 +13,7 @@ extern crate alloc;
 extern crate core;
 
 pub mod allocator;
+pub mod ata;
 pub mod disk;
 pub mod e9;
 pub mod fb;
@@ -76,7 +81,7 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
 
     let mut fbcli = FramebufferCLI::new(framebuffer);
 
-    fbcli.write_str("hello world\r\n");
+    fbcli.write_str("Welcome to qos!\r\n");
     fbcli.draw();
     framebuffer.swap();
 

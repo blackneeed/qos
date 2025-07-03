@@ -67,12 +67,12 @@ pub unsafe fn initialize_idt() {
     IDTR.base = &raw const IDT as *const _ as u32;
     IDTR.limit = ((size_of::<IDT32Entry>() as u16) * 256) - 1;
 
-    for vec in 0..256 {
-        IDT.0[vec].isr_low = ((ISRS[vec].addr() as u32) & 0xFFFF) as u16;
-        IDT.0[vec].kernel_cs = 0x08;
-        IDT.0[vec].attrs = 0x8E;
-        IDT.0[vec].isr_high = ((ISRS[vec].addr() as u32) >> 16) as u16;
-        IDT.0[vec].reserved = 0;
+    for (i, _) in ISRS.iter().enumerate() {
+        IDT.0[i].isr_low = ((ISRS[i].addr() as u32) & 0xFFFF) as u16;
+        IDT.0[i].kernel_cs = 0x08;
+        IDT.0[i].attrs = 0x8E;
+        IDT.0[i].isr_high = ((ISRS[i].addr() as u32) >> 16) as u16;
+        IDT.0[i].reserved = 0;
     }
 
     load_idt(&raw const IDTR);

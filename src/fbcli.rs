@@ -180,11 +180,11 @@ pub struct FramebufferCLI {
 
 impl FramebufferCLI {
     pub fn new(fb: Framebuffer) -> FramebufferCLI {
-        return FramebufferCLI {
+        FramebufferCLI {
             chars: Vec::new(),
             fb,
             font: Font::from_bytes(&VGA8_FONT).unwrap(),
-        };
+        }
     }
 
     pub fn write_char(&mut self, chr: char) {

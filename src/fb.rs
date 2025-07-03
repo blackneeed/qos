@@ -10,7 +10,7 @@ use core::alloc::Layout;
 pub unsafe fn get_framebuffer_tag(
     mb2_info: *const MultibootInfo,
 ) -> Option<*const MultibootFramebufferTag> {
-    return get_tag(mb2_info, 8).map(|x| x as *const MultibootFramebufferTag);
+    get_tag(mb2_info, 8).map(|x| x as *const MultibootFramebufferTag)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -60,7 +60,7 @@ impl Framebuffer {
 
         core::ptr::write_bytes(double_fb, 0, height as usize * pitch as usize);
 
-        return Some(Framebuffer {
+        Some(Framebuffer {
             width,
             height,
             pitch,
@@ -75,11 +75,11 @@ impl Framebuffer {
             bpp_b: 4,
             double_fb,
             mem_len: height * pitch,
-        });
+        })
     }
 
     pub unsafe fn from_multiboot(tag: *const MultibootFramebufferTag) -> Option<Framebuffer> {
-        return Framebuffer::new(
+        Framebuffer::new(
             (*tag).width,
             (*tag).height,
             (*tag).pitch,
@@ -91,7 +91,7 @@ impl Framebuffer {
             (*tag).blue_field_pos,
             (*tag).blue_mask_size,
             (*tag).bpp,
-        );
+        )
     }
 
     #[inline(always)]
@@ -99,7 +99,7 @@ impl Framebuffer {
         if n == 8 {
             return value;
         };
-        return ((value as u32 * ((1u32 << n as u32) - 1u32) + 128u32) >> 8) as u8;
+        ((value as u32 * ((1u32 << n as u32) - 1u32) + 128u32) >> 8) as u8
     }
 
     #[inline(always)]
@@ -111,14 +111,14 @@ impl Framebuffer {
         let b = (self.conv_color((col & 0xFF) as u8, self.blue_mask_size) as u32)
             << self.blue_field_pos;
 
-        return r | g | b;
+        r | g | b
     }
 
     #[inline(always)]
     unsafe fn get_pixel_ptr(&self, x: u32, y: u32) -> *mut u32 {
-        return (self
+        (self
             .double_fb
-            .add((y * self.pitch + x * self.bpp_b as u32) as usize)) as *mut u32;
+            .add((y * self.pitch + x * self.bpp_b as u32) as usize)) as *mut u32
     }
 
     pub unsafe fn put_pixel(&self, col: u32, x: u32, y: u32) // 0xAARRGGBB (alpha unhandled)
@@ -135,31 +135,29 @@ impl Framebuffer {
         x: u32,
         y: u32,
     ) -> Result<(), ()> {
-        if let Some(glyph) = font.retrieve_glyph(chr) {
-            if let Some(data) = &glyph.data {
-                for fy in 0..font.height {
-                    for fx in 0..font.width {
-                        for fb in 0u8..8 {
-                            let idx: usize;
+        if let Some(glyph) = font.retrieve_glyph(chr)
+            && let Some(data) = &glyph.data
+        {
+            for fy in 0..font.height {
+                for fx in 0..font.width {
+                    for fb in 0u8..8 {
+                        let idx = if fx == 0 {
+                            fy as usize
+                        } else {
+                            fx as usize * fy as usize
+                        };
 
-                            if fx == 0 {
-                                idx = fy as usize;
-                            } else {
-                                idx = fx as usize * fy as usize;
-                            }
-
-                            if (data[idx] & ((1 << 7) >> fb)) > 0 {
-                                self.put_pixel(col, x + fx as u32 * 7 + fb as u32, y + fy as u32);
-                            } else {
-                                self.put_pixel(bgcol, x + fx as u32 * 7 + fb as u32, y + fy as u32);
-                            }
+                        if (data[idx] & ((1 << 7) >> fb)) > 0 {
+                            self.put_pixel(col, x + fx as u32 * 7 + fb as u32, y + fy as u32);
+                        } else {
+                            self.put_pixel(bgcol, x + fx as u32 * 7 + fb as u32, y + fy as u32);
                         }
                     }
                 }
-                return Ok(());
             }
+            return Ok(());
         }
-        return Err(());
+        Err(())
     }
 
     pub unsafe fn draw_line(&mut self, col: u32, w: u32, x: u32, y: u32) {

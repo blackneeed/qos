@@ -44,12 +44,12 @@ impl Font {
             offset += glyph_size as usize;
         }
 
-        return Some(Font {
+        Some(Font {
             width,
             height,
             count,
             glyphs: glyphs.into_boxed_slice(),
-        });
+        })
     }
 
     pub fn retrieve_glyph(&self, idx: u8) -> Option<&Glyph> {
@@ -57,6 +57,6 @@ impl Font {
             return None;
         }
 
-        return Some(&self.glyphs[idx as usize]);
+        Some(&self.glyphs[idx as usize])
     }
 }
