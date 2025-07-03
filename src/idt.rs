@@ -1,10 +1,9 @@
 use crate::println;
 use crate::{panic::_hcf, pic::PIC_DRIVER};
-use core::marker::Copy;
 use core::mem::size_of;
 
 #[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct IDT32Entry {
     isr_low: u16,
     kernel_cs: u16,

@@ -14,7 +14,7 @@ pub struct MultibootInfoTag {
 }
 
 #[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 pub struct MultibootMemoryMapTag {
     pub type_: u32,
     pub size: u32,

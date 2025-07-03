@@ -13,7 +13,7 @@ pub unsafe fn get_framebuffer_tag(
     get_tag(mb2_info, 8).map(|x| x as *const MultibootFramebufferTag)
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Framebuffer {
     pub width: u32,
     pub height: u32,
@@ -121,6 +121,7 @@ impl Framebuffer {
             .add((y * self.pitch + x * self.bpp_b as u32) as usize)) as *mut u32
     }
 
+    #[inline(always)]
     pub unsafe fn put_pixel(&self, col: u32, x: u32, y: u32) // 0xAARRGGBB (alpha unhandled)
     {
         *self.get_pixel_ptr(x, y) = self.color_packed(col);
@@ -128,7 +129,7 @@ impl Framebuffer {
 
     pub unsafe fn put_char(
         &mut self,
-        font: Font,
+        font: &Font,
         chr: u8,
         col: u32,
         bgcol: u32,
@@ -139,19 +140,11 @@ impl Framebuffer {
             && let Some(data) = &glyph.data
         {
             for fy in 0..font.height {
-                for fx in 0..font.width {
-                    for fb in 0u8..8 {
-                        let idx = if fx == 0 {
-                            fy as usize
-                        } else {
-                            fx as usize * fy as usize
-                        };
-
-                        if (data[idx] & ((1 << 7) >> fb)) > 0 {
-                            self.put_pixel(col, x + fx as u32 * 7 + fb as u32, y + fy as u32);
-                        } else {
-                            self.put_pixel(bgcol, x + fx as u32 * 7 + fb as u32, y + fy as u32);
-                        }
+                for fb in 0u8..8 {
+                    if (data[fy as usize] & ((1 << 7) >> fb)) > 0 {
+                        self.put_pixel(col, x + fb as u32, y + fy as u32);
+                    } else {
+                        self.put_pixel(bgcol, x + fb as u32, y + fy as u32);
                     }
                 }
             }

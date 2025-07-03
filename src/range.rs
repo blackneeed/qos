@@ -1,6 +1,6 @@
-use core::option::Option::{Some, None};
+use core::option::Option::{None, Some};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Range {
     pub start: u32,
     pub end: u32,
@@ -44,3 +44,4 @@ pub enum ChopResult {
     One(Range),
     Two(Range, Range),
 }
+

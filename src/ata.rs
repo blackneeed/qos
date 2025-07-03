@@ -29,15 +29,22 @@ impl ATADrive {
             outb(io + 7, 0xEC); // identify
 
             let mut stat = inb(io + 7);
-            if stat == 0 {
+
+            if stat & 1 > 0 || stat & (1 << 5) > 0 || stat == 0 {
                 return None;
             }
+
             while stat & 0x80 != 0 {
+                if stat & 1 != 0 || stat & (1 << 5) != 0 {
+                    // err or df
+                    return None;
+                }
                 stat = inb(io + 7);
             }
 
             if stat & 0x08 == 0 {
-                return None; // no drive
+                // drq not set - no drive
+                return None;
             }
 
             let mut buf = [0u16; 256];

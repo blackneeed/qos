@@ -10,7 +10,6 @@
 #![feature(ascii_char)]
 
 extern crate alloc;
-extern crate core;
 
 pub mod allocator;
 pub mod ata;
@@ -30,15 +29,15 @@ pub mod pic;
 pub mod range;
 pub mod vga;
 
-use allocator::initialize_allocator;
+use crate::allocator::initialize_allocator;
+use crate::fb::{Framebuffer, get_framebuffer_tag};
+use crate::fbcli::FramebufferCLI;
+use crate::idt::initialize_idt;
+use crate::mem::{get_biggest_usable_pool, get_memory_map_tag};
+use crate::multiboot::MultibootInfo;
+use crate::panic::_hcf;
+use crate::pic::{PIC, PIC_DRIVER};
 use core::arch::asm;
-use fb::{Framebuffer, get_framebuffer_tag};
-use fbcli::FramebufferCLI;
-use idt::initialize_idt;
-use mem::{get_biggest_usable_pool, get_memory_map_tag};
-use multiboot::MultibootInfo;
-use panic::_hcf;
-use pic::{PIC, PIC_DRIVER};
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
@@ -65,25 +64,56 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
 
     initialize_allocator(biggest_usable_memory_pool.unwrap());
 
-    let framebuffer_tag = get_framebuffer_tag(mb2_info);
-    if framebuffer_tag.is_none() {
-        println!("No framebuffer tag found!");
-        _hcf();
+    let mut fb_i: bool = false;
+
+    if let Some(fbtag) = get_framebuffer_tag(mb2_info)
+        && let Some(fb) = Framebuffer::from_multiboot(fbtag)
+    {
+        fb_i = true;
+        fbcli::init(FramebufferCLI::new(fb));
     }
 
-    let framebuffer_ = Framebuffer::from_multiboot(framebuffer_tag.unwrap());
-    if framebuffer_.is_none() {
-        println!("Could not create framebuffer!");
-        _hcf();
+    println!("Initialized:");
+    println!("\t- E9");
+    println!("\t- VGA");
+    if fb_i {
+        println!("\t- Framebuffer");
+        println!("\t- Framebuffer CLI");
     }
 
-    let framebuffer = framebuffer_.unwrap();
-
-    let mut fbcli = FramebufferCLI::new(framebuffer);
-
-    fbcli.write_str("Welcome to qos!\r\n");
-    fbcli.draw();
-    framebuffer.swap();
+    println!("\t- Allocator");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
+    println!("Welcome to qos!");
 
     loop {
         asm!("hlt")

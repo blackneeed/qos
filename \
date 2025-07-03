@@ -218,6 +218,7 @@ impl FramebufferCLI {
         let mut x = 0u32;
         let mut y = 0u32;
 
+        let font = &self.font.clone();
         for &c in &self.chars {
             match c {
                 b'\n' => {
@@ -235,7 +236,7 @@ impl FramebufferCLI {
 
                 b'\t' => {
                     for _ in 0..4 {
-                        let _ = self.fb.put_char(&self.font, b' ', 0xFFFFFF, 0x000000, x, y);
+                        let _ = self.fb.put_char(font, b' ', 0xFFFFFF, 0x000000, x, y);
 
                         x += 8;
                         if x >= self.fb.width {
@@ -251,7 +252,7 @@ impl FramebufferCLI {
                 }
 
                 _ => {
-                    let _ = self.fb.put_char(&self.font, c, 0xFFFFFF, 0x000000, x, y);
+                    let _ = self.fb.put_char(font, c, 0xFFFFFF, 0x000000, x, y);
 
                     x += 8;
                     if x >= self.fb.width {
