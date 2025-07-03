@@ -256,7 +256,7 @@ impl FramebufferCLI {
                     x += 8;
                     if x >= self.fb.width {
                         x = 0;
-                        y += self.fb.height;
+                        y += self.font.height as u32;
 
                         if y >= self.fb.height {
                             y = 0;

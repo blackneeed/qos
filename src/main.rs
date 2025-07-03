@@ -11,6 +11,7 @@
 
 extern crate alloc;
 
+pub mod acpi;
 pub mod allocator;
 pub mod ata;
 pub mod disk;
@@ -29,6 +30,7 @@ pub mod pic;
 pub mod range;
 pub mod vga;
 
+use crate::acpi::{FADT, SDT, get_acpi_tag, get_sdt};
 use crate::allocator::initialize_allocator;
 use crate::fb::{Framebuffer, get_framebuffer_tag};
 use crate::fbcli::FramebufferCLI;
@@ -83,37 +85,20 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
 
     println!("\t- Allocator");
     println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
+
+    if let Some(acpi_tag) = get_acpi_tag(mb2_info) {
+        if let Some(sdt) = get_sdt(acpi_tag, b"FACP") {
+            println!("{:?}", sdt);
+            println!(
+                "{:?}",
+                *(((&raw const *sdt) as *const u8).add(core::mem::size_of::<SDT>()) as *const FADT)
+            )
+        } else {
+            println!("Could not find FADT!");
+        }
+    } else {
+        println!("Could not find ACPI tag!");
+    }
 
     loop {
         asm!("hlt")

@@ -1,3 +1,5 @@
+use crate::println;
+
 #[repr(C, packed)]
 #[derive(Debug)]
 pub struct MultibootInfo {
@@ -52,6 +54,18 @@ pub struct MultibootFramebufferTag {
     pub blue_mask_size: u8,
 }
 
+#[repr(C, packed)]
+#[derive(Debug)]
+pub struct MultibootAcpiOldTag {
+    pub type_: u32,
+    pub size: u32,
+    pub signature: [u8; 8],
+    pub checksum: u8,
+    pub oem_id: [u8; 6],
+    pub revision: u8,
+    pub rsdt_addr: u32,
+}
+
 pub unsafe fn get_tag(
     mb2_info: *const MultibootInfo,
     type_: u32,
@@ -67,6 +81,7 @@ pub unsafe fn get_tag(
         }
 
         if (*tag_ptr).type_ == type_ {
+            println!("g");
             return Some(tag_ptr);
         }
 
