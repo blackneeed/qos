@@ -64,12 +64,7 @@ pub unsafe fn get_tag(type_: u32) -> Option<*const MultibootInfoTag> {
     let mut tag_ptr = (&raw const (*mb2_info).tags) as *const MultibootInfoTag;
     loop {
         if (*tag_ptr).type_ == 0 {
-            println!(
-                "{}:{}: Could not find multiboot tag of type {}",
-                file!(),
-                line!(),
-                type_
-            );
+            println!("{}:{}: tag of type {} not present", file!(), line!(), type_);
             return None;
         }
 

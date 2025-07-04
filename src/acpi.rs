@@ -44,18 +44,22 @@ pub struct SDT {
 }
 
 impl SDT {
-    pub unsafe fn rsdt_pointers(&self) -> &[u32] {
+    pub unsafe fn rsdt_pointers(&self) -> impl Iterator<Item = u32> {
         core::slice::from_raw_parts(
-            (self as *const SDT).add(1) as *const u32,
-            ((self.length as usize).saturating_sub(size_of::<SDT>())) / 4,
+            (self as *const SDT).add(1) as *const u8,
+            (self.length as usize).saturating_sub(size_of::<SDT>()),
         )
+        .chunks_exact(4)
+        .map(|x| u32::from_le_bytes(x.try_into().unwrap()))
     }
 
-    pub unsafe fn xsdt_pointers(&self) -> &[u64] {
+    pub unsafe fn xsdt_pointers(&self) -> impl Iterator<Item = u64> {
         core::slice::from_raw_parts(
-            (self as *const SDT).add(1) as *const u64,
-            ((self.length as usize).saturating_sub(size_of::<SDT>())) / 8,
+            (self as *const SDT).add(1) as *const u8,
+            (self.length as usize).saturating_sub(size_of::<SDT>()),
         )
+        .chunks_exact(8)
+        .map(|x| u64::from_le_bytes(x.try_into().unwrap()))
     }
 }
 
@@ -148,11 +152,17 @@ pub unsafe fn get_rsdp() -> Option<*const RSDP> {
         Some(rsdp)
     } else {
         let mut addr = 0x000E0000u32;
-        while addr < 0x000FFFFF {
-            if core::slice::from_raw_parts::<u8>(addr as *const u8, 8) == b"RSD PTR " {
-                return Some(addr as *const RSDP);
+        'outer: while addr < 0x000FFFFF {
+            let valid = b"RSD PTR ";
+
+            for (i, &v) in valid.iter().enumerate() {
+                if *((addr + i as u32) as *const u8) != v {
+                    addr += 16;
+                    continue 'outer;
+                }
             }
-            addr += 16;
+
+            return Some(addr as *const RSDP);
         }
         println!("{}:{}: could not find RSDP", file!(), line!());
         None
@@ -165,8 +175,7 @@ pub unsafe fn get_sdt(signature: &[u8; 4]) -> Option<&'static SDT> {
             0 => Some(
                 (*((*rsdp).rsdt_addr as *const SDT))
                     .rsdt_pointers()
-                    .iter()
-                    .map(|&x| &*(x as *const SDT))
+                    .map(|x| &*(x as *const SDT))
                     .find(|&x| &x.signature == signature)?,
             ),
             _ => {
@@ -182,8 +191,7 @@ pub unsafe fn get_sdt(signature: &[u8; 4]) -> Option<&'static SDT> {
 
                 (*(xsdt_addr as *const SDT))
                     .xsdt_pointers()
-                    .iter()
-                    .map(|&x| match x > u32::MAX as u64 {
+                    .map(|x| match x > u32::MAX as u64 {
                         false => Some(&*(x as *const SDT)),
                         true => {
                             println!(
@@ -224,5 +232,133 @@ pub unsafe fn acpi_init() {
             (fadt.smm_interrupt_command_port & 0xFFFF) as u16,
             fadt.acpi_enable,
         );
+    }
+
+    if let Some(madt) = get_sdt(b"APIC") {
+        println!(
+            "Local APIC address: {:#08X}",
+            core::ptr::read_unaligned(
+                ((&raw const *madt) as *const u8)
+                    .add(core::mem::size_of::<SDT>())
+                    .add(0) as *const u32
+            ),
+        );
+
+        println!(
+            "Legacy 8259 PICs{} installed",
+            match ((core::ptr::read_unaligned(
+                ((&raw const *madt) as *const u8)
+                    .add(core::mem::size_of::<SDT>())
+                    .add(4) as *const u32
+            )) & 1)
+                != 0
+            {
+                true => "",
+                false => "not ",
+            }
+        );
+
+        let mut address = ((&raw const *madt) as *const u8)
+            .add(core::mem::size_of::<SDT>())
+            .add(8);
+
+        let mut length = core::mem::size_of::<SDT>() as u32 + 8;
+
+        while length < madt.length {
+            let entry_type = *address;
+            let entry_length = *address.add(1);
+            let entry_address = address.add(2);
+
+            match entry_type {
+                0 => {
+                    println!("Processor LAPIC");
+                    println!("\tACPI Processor ID: {}", *entry_address);
+                    println!("\tAPIC ID: {}", *entry_address.add(1));
+                    println!(
+                        "\tprocessor can{} be enabled",
+                        if (((*entry_address.add(2)) & 1) | ((*entry_address.add(2)) & 2)) != 0 {
+                            ""
+                        } else {
+                            "'t"
+                        }
+                    );
+                }
+                1 => {
+                    println!("I/O APIC");
+                    println!("\tID: {}", *entry_address);
+                    println!(
+                        "\tAddress: {}",
+                        core::ptr::read_unaligned(entry_address.add(2) as *const u32)
+                    );
+                    println!(
+                        "\tGSI Base: {}",
+                        core::ptr::read_unaligned(entry_address.add(6) as *const u32)
+                    );
+                }
+                2 => {
+                    println!("I/O APIC Interrupt Source Override");
+                    println!("\tBus source: {}", *entry_address);
+                    println!("\tIRQ source: {}", *entry_address.add(1));
+                    println!(
+                        "\tGSI: {}",
+                        core::ptr::read_unaligned(entry_address.add(2) as *const u32)
+                    );
+                    println!(
+                        "\tFlags: {}",
+                        core::ptr::read_unaligned(entry_address.add(6) as *const u16)
+                    );
+                }
+                3 => {
+                    println!("I/O APIC Non-maskable interrupt source");
+                    println!("\tNMI Source: {}", *entry_address);
+                    println!(
+                        "\tFlags: {}",
+                        core::ptr::read_unaligned(entry_address.add(2) as *const u16)
+                    );
+                    println!(
+                        "\tGSI: {}",
+                        core::ptr::read_unaligned(entry_address.add(4) as *const u32)
+                    );
+                }
+                4 => {
+                    println!("LAPIC Non-maskable interrupts");
+                    println!(
+                        "\tACPI Processor ID: {}{}",
+                        *entry_address,
+                        if *entry_address == 0xFF { " (all)" } else { "" }
+                    );
+                    println!(
+                        "\tFlags: {}",
+                        core::ptr::read_unaligned(entry_address.add(1) as *const u16)
+                    );
+                    println!("\tLINT{}", *entry_address.add(3));
+                }
+                5 => {
+                    println!(
+                        "{}:{}: found LAPIC address override entry in MADT, skipping!",
+                        file!(),
+                        line!()
+                    )
+                }
+                9 => {
+                    println!(
+                        "{}:{}: found x2APIC entry in MADT, skipping!",
+                        file!(),
+                        line!()
+                    );
+                }
+                _ => {
+                    println!(
+                        "{}:{}: found unknown entry type {} in MADT, skipping!",
+                        file!(),
+                        line!(),
+                        entry_type
+                    );
+                }
+            }
+
+            address = address.add(entry_length as usize);
+            length += entry_length as u32;
+        }
     }
 }
