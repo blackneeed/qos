@@ -15,6 +15,21 @@ pub struct RSDP {
 
 #[repr(C, packed)]
 #[derive(Debug)]
+pub struct XSDP {
+    pub signature: [u8; 8],
+    pub checksum: u8,
+    pub oem_id: [u8; 6],
+    pub revision: u8,
+    pub rsdt_addr: u32,
+
+    pub length: u32,
+    pub xsdt_addr: u64,
+    pub checksum2: u8,
+    pub reserved: [u8; 3],
+}
+
+#[repr(C, packed)]
+#[derive(Debug)]
 pub struct SDT {
     pub signature: [u8; 4],
     pub length: u32,
@@ -32,6 +47,13 @@ impl SDT {
         core::slice::from_raw_parts(
             (self as *const SDT).add(1) as *const u32,
             ((self.length as usize).saturating_sub(size_of::<SDT>())) / 4,
+        )
+    }
+
+    pub unsafe fn xsdt_pointers(&self) -> &[u64] {
+        core::slice::from_raw_parts(
+            (self as *const SDT).add(1) as *const u64,
+            ((self.length as usize).saturating_sub(size_of::<SDT>())) / 8,
         )
     }
 }
@@ -102,11 +124,11 @@ impl core::fmt::Debug for GAS {
 }
 
 pub unsafe fn get_rsdp() -> Option<*const RSDP> {
-    if let Some(rsdp) = get_tag(14)
+    if let Some(rsdp) = get_tag(15)
         .map(|x| (x as *const u8).add(core::mem::size_of::<MultibootInfoTag>()) as *const RSDP)
     {
         Some(rsdp)
-    } else if let Some(rsdp) = get_tag(15)
+    } else if let Some(rsdp) = get_tag(14)
         .map(|x| (x as *const u8).add(core::mem::size_of::<MultibootInfoTag>()) as *const RSDP)
     {
         Some(rsdp)
@@ -134,23 +156,47 @@ pub unsafe fn get_sdt(signature: &[u8; 4]) -> Option<&'static SDT> {
                     .find(|&x| &x.signature == signature)?,
             ),
             _ => {
-                println!(
-                    "{}:{}: could not find {} SDT",
-                    file!(),
-                    line!(),
-                    core::str::from_utf8_unchecked(signature)
-                );
-                None
+                let xsdt_addr = (*(rsdp as *const XSDP)).xsdt_addr;
+                if xsdt_addr >= u32::MAX as u64 {
+                    println!(
+                        "{}:{}: XSDT address > 4GB, can't access XSDT",
+                        file!(),
+                        line!()
+                    );
+                    return None;
+                }
+
+                (*(xsdt_addr as *const SDT))
+                    .xsdt_pointers()
+                    .iter()
+                    .map(|&x| match x > u32::MAX as u64 {
+                        false => Some(&*(x as *const SDT)),
+                        true => {
+                            println!(
+                                "{}:{}: found matching SDT but address > 4GB, skipping",
+                                file!(),
+                                line!()
+                            );
+                            None
+                        }
+                    })
+                    .find(|&x| x.is_some() && &x.unwrap().signature == signature)?
             }
         }
     } else {
+        println!(
+            "{}:{}: couldn't find SDT '{}'",
+            file!(),
+            line!(),
+            core::str::from_utf8_unchecked(signature)
+        );
         None
     }
 }
 
 pub unsafe fn get_fadt() -> Option<&'static FADT> {
     if let Some(sdt) = get_sdt(b"FACP") {
-        Some(&*((&raw const *sdt) as *const FADT))
+        Some(&*(((&raw const *sdt) as *const u8).add(core::mem::size_of::<SDT>()) as *const FADT))
     } else {
         None
     }
