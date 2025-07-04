@@ -1,3 +1,6 @@
+use crate::get_multiboot_info;
+use crate::println;
+
 #[repr(C, packed)]
 #[derive(Debug)]
 pub struct MultibootInfo {
@@ -52,10 +55,8 @@ pub struct MultibootFramebufferTag {
     pub blue_mask_size: u8,
 }
 
-pub unsafe fn get_tag(
-    mb2_info: *const MultibootInfo,
-    type_: u32,
-) -> Option<*const MultibootInfoTag> {
+pub unsafe fn get_tag(type_: u32) -> Option<*const MultibootInfoTag> {
+    let mb2_info = get_multiboot_info();
     if (*mb2_info).total_size as usize == core::mem::size_of::<MultibootInfo>() {
         return None;
     }
@@ -63,6 +64,7 @@ pub unsafe fn get_tag(
     let mut tag_ptr = (&raw const (*mb2_info).tags) as *const MultibootInfoTag;
     loop {
         if (*tag_ptr).type_ == 0 {
+            println!("{}:{}: tag of type {} not present", file!(), line!(), type_);
             return None;
         }
 

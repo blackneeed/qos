@@ -27,12 +27,26 @@ multiboot2_mmap_tag_end:
 align 8
 multiboot2_fb_tag_start:
 dw 5
-dw 0
+dw 1
 dd multiboot2_fb_tag_end - multiboot2_fb_tag_start
 dd 0
 dd 0
 dd 32
 multiboot2_fb_tag_end:
+
+align 8
+multiboot2_acpi_new_tag_start:
+dw 15
+dw 1
+dd multiboot2_acpi_new_tag_end - multiboot2_acpi_new_tag_start
+multiboot2_acpi_new_tag_end:
+
+align 8
+multiboot2_acpi_old_tag_start:
+dw 14
+dw 1
+dd multiboot2_acpi_old_tag_end - multiboot2_acpi_old_tag_start
+multiboot2_acpi_old_tag_end:
 
 align 8
 multiboot2_end_tag_start:

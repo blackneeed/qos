@@ -6,17 +6,20 @@
 #![allow(clippy::new_without_default)]
 #![allow(clippy::result_unit_err)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::identity_op)]
 #![feature(proc_macro_hygiene)]
 #![feature(ascii_char)]
 
 extern crate alloc;
 
+pub mod acpi;
 pub mod allocator;
 pub mod ata;
 pub mod disk;
 pub mod e9;
 pub mod fb;
 pub mod fbcli;
+pub mod flanterm;
 pub mod font;
 pub mod idt;
 pub mod io;
@@ -29,18 +32,42 @@ pub mod pic;
 pub mod range;
 pub mod vga;
 
+use crate::acpi::acpi_init;
 use crate::allocator::initialize_allocator;
-use crate::fb::{Framebuffer, get_framebuffer_tag};
+use crate::fb::Framebuffer;
 use crate::fbcli::FramebufferCLI;
 use crate::idt::initialize_idt;
-use crate::mem::{get_biggest_usable_pool, get_memory_map_tag};
+use crate::mem::get_biggest_usable_pool_multiboot;
 use crate::multiboot::MultibootInfo;
-use crate::panic::_hcf;
 use crate::pic::{PIC, PIC_DRIVER};
 use core::arch::asm;
+use spin::Mutex;
+
+#[derive(Clone, Copy, Debug)]
+pub struct SendablePtr {
+    pub ptr: *const (),
+}
+
+unsafe impl Send for SendablePtr {}
+
+static MULTIBOOT_INFO: Mutex<Option<SendablePtr>> = Mutex::new(None);
+
+pub fn get_multiboot_info() -> *const MultibootInfo {
+    let lock = *MULTIBOOT_INFO.lock();
+    match lock {
+        Some(x) => x.ptr as *const MultibootInfo,
+        None => {
+            panic!("Access of multiboot2 pointer via get_multiboot_info() before initialization")
+        }
+    }
+}
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
+    *MULTIBOOT_INFO.lock() = Some(SendablePtr {
+        ptr: mb2_info as *const (),
+    });
+
     {
         let mut lock = PIC_DRIVER.lock();
         *lock = Some(PIC::new());
@@ -50,69 +77,19 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
 
     initialize_idt();
 
-    let memory_map_tag = get_memory_map_tag(mb2_info);
-    if memory_map_tag.is_none() {
-        println!("No memory map tag found!");
-        _hcf();
-    }
-
-    let biggest_usable_memory_pool = get_biggest_usable_pool(memory_map_tag.unwrap());
+    let biggest_usable_memory_pool = get_biggest_usable_pool_multiboot();
     if biggest_usable_memory_pool.is_none() {
-        println!("No usable memory pools!");
-        _hcf();
+        panic!("{}:{}: No usable memory pools!", file!(), line!());
     }
 
     initialize_allocator(biggest_usable_memory_pool.unwrap());
 
-    let mut fb_i: bool = false;
-
-    if let Some(fbtag) = get_framebuffer_tag(mb2_info)
-        && let Some(fb) = Framebuffer::from_multiboot(fbtag)
-    {
-        fb_i = true;
-        fbcli::init(FramebufferCLI::new(fb));
+    if let Some(fb) = Framebuffer::from_multiboot() {
+        crate::fbcli::init(FramebufferCLI::new(fb));
     }
 
-    println!("Initialized:");
-    println!("\t- E9");
-    println!("\t- VGA");
-    if fb_i {
-        println!("\t- Framebuffer");
-        println!("\t- Framebuffer CLI");
-    }
+    acpi_init();
 
-    println!("\t- Allocator");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
-    println!("Welcome to qos!");
     println!("Welcome to qos!");
 
     loop {
