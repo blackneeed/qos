@@ -1,4 +1,5 @@
 use crate::{
+    ioport::outb,
     multiboot::{MultibootInfoTag, get_tag},
     println,
 };
@@ -124,15 +125,19 @@ pub struct GAS {
     pub address: u64,
 }
 
+#[repr(C, packed)]
+#[derive(Debug)]
+
 impl core::fmt::Debug for GAS {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("GAS")
+        return f
+            .debug_struct("GAS")
             .field("address_space", &self.address_space)
             .field("bit_width", &self.bit_width)
             .field("bit_offset", &self.bit_offset)
             .field("access_size", &self.access_size)
             .field("address", &(self.address - 0))
-            .finish()
+            .finish();
     }
 }
 
@@ -212,5 +217,16 @@ pub unsafe fn get_fadt() -> Option<&'static FADT> {
         Some(&*(((&raw const *sdt) as *const u8).add(core::mem::size_of::<SDT>()) as *const FADT))
     } else {
         None
+    }
+}
+
+pub unsafe fn acpi_init() {
+    if let Some(fadt) = get_fadt()
+        && (fadt.smm_interrupt_command_port != 0 || fadt.acpi_enable != 0)
+    {
+        outb(
+            (fadt.smm_interrupt_command_port & 0xFFFF) as u16,
+            fadt.acpi_enable,
+        );
     }
 }

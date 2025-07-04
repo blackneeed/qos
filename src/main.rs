@@ -30,7 +30,7 @@ pub mod pic;
 pub mod range;
 pub mod vga;
 
-use crate::acpi::get_fadt;
+use crate::acpi::{acpi_init, get_fadt};
 use crate::allocator::initialize_allocator;
 use crate::fb::Framebuffer;
 use crate::fbcli::FramebufferCLI;
@@ -86,7 +86,7 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
         fbcli::init(FramebufferCLI::new(fb));
     }
 
-    println!("{:?}", get_fadt());
+    acpi_init();
 
     println!("Welcome to qos!");
 
