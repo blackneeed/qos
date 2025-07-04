@@ -1,4 +1,17 @@
-use crate::multiboot::{MultibootAcpiOldTag, MultibootInfo, get_tag};
+use crate::{
+    multiboot::{MultibootInfoTag, get_tag},
+    println,
+};
+
+#[repr(C, packed)]
+#[derive(Debug)]
+pub struct RSDP {
+    pub signature: [u8; 8],
+    pub checksum: u8,
+    pub oem_id: [u8; 6],
+    pub revision: u8,
+    pub rsdt_addr: u32,
+}
 
 #[repr(C, packed)]
 #[derive(Debug)]
@@ -88,36 +101,57 @@ impl core::fmt::Debug for GAS {
     }
 }
 
-pub unsafe fn get_acpi_tag(mb2_info: *const MultibootInfo) -> Option<*const MultibootAcpiOldTag> {
-    get_tag(mb2_info, 14).map(|x| x as *const MultibootAcpiOldTag)
-}
-
-pub unsafe fn get_sdts(
-    acpi_tag: *const MultibootAcpiOldTag,
-) -> Option<impl Iterator<Item = &'static SDT>> {
-    match (*acpi_tag).revision {
-        0 => Some(
-            (*((*acpi_tag).rsdt_addr as *const SDT))
-                .rsdt_pointers()
-                .iter()
-                .map(|&x| &*(x as *const SDT)),
-        ),
-        _ => None,
+pub unsafe fn get_rsdp() -> Option<*const RSDP> {
+    if let Some(rsdp) = get_tag(14)
+        .map(|x| (x as *const u8).add(core::mem::size_of::<MultibootInfoTag>()) as *const RSDP)
+    {
+        Some(rsdp)
+    } else if let Some(rsdp) = get_tag(15)
+        .map(|x| (x as *const u8).add(core::mem::size_of::<MultibootInfoTag>()) as *const RSDP)
+    {
+        Some(rsdp)
+    } else {
+        let mut addr = 0x000E0000u32;
+        while addr < 0x000FFFFF {
+            if core::slice::from_raw_parts::<u8>(addr as *const u8, 8) == b"RSD PTR " {
+                return Some(addr as *const RSDP);
+            }
+            addr += 16;
+        }
+        println!("{}:{}: could not find RSDP", file!(), line!());
+        None
     }
 }
 
-pub unsafe fn get_sdt(
-    acpi_tag: *const MultibootAcpiOldTag,
-    signature: &[u8; 4],
-) -> Option<&'static SDT> {
-    match (*acpi_tag).revision {
-        0 => Some(
-            (*((*acpi_tag).rsdt_addr as *const SDT))
-                .rsdt_pointers()
-                .iter()
-                .map(|&x| &*(x as *const SDT))
-                .find(|&x| &x.signature == signature)?,
-        ),
-        _ => None,
+pub unsafe fn get_sdt(signature: &[u8; 4]) -> Option<&'static SDT> {
+    if let Some(rsdp) = get_rsdp() {
+        match (*rsdp).revision {
+            0 => Some(
+                (*((*rsdp).rsdt_addr as *const SDT))
+                    .rsdt_pointers()
+                    .iter()
+                    .map(|&x| &*(x as *const SDT))
+                    .find(|&x| &x.signature == signature)?,
+            ),
+            _ => {
+                println!(
+                    "{}:{}: could not find {} SDT",
+                    file!(),
+                    line!(),
+                    core::str::from_utf8_unchecked(signature)
+                );
+                None
+            }
+        }
+    } else {
+        None
+    }
+}
+
+pub unsafe fn get_fadt() -> Option<&'static FADT> {
+    if let Some(sdt) = get_sdt(b"FACP") {
+        Some(&*((&raw const *sdt) as *const FADT))
+    } else {
+        None
     }
 }

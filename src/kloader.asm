@@ -35,6 +35,13 @@ dd 32
 multiboot2_fb_tag_end:
 
 align 8
+multiboot2_acpi_new_tag_start:
+dw 15
+dw 1
+dd multiboot2_acpi_new_tag_end - multiboot2_acpi_new_tag_start
+multiboot2_acpi_new_tag_end:
+
+align 8
 multiboot2_acpi_old_tag_start:
 dw 14
 dw 1

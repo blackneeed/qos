@@ -1,16 +1,15 @@
 use crate::{
     font::Font,
     mem::memset32,
-    multiboot::{MultibootFramebufferTag, MultibootInfo, get_tag},
+    multiboot::{MultibootFramebufferTag, get_tag},
+    println,
 };
 
 use alloc::alloc::alloc;
 use core::alloc::Layout;
 
-pub unsafe fn get_framebuffer_tag(
-    mb2_info: *const MultibootInfo,
-) -> Option<*const MultibootFramebufferTag> {
-    get_tag(mb2_info, 8).map(|x| x as *const MultibootFramebufferTag)
+pub unsafe fn get_framebuffer_tag() -> Option<*const MultibootFramebufferTag> {
+    get_tag(8).map(|x| x as *const MultibootFramebufferTag)
 }
 
 #[derive(Debug)]
@@ -49,49 +48,63 @@ impl Framebuffer {
             return None;
         }
 
-        let double_fb = alloc(
-            Layout::from_size_align(height as usize * pitch as usize, 4)
-                .expect("fb.rs allocating double fb thx"),
-        );
+        if let Ok(layout) = Layout::from_size_align(height as usize * pitch as usize, 4) {
+            let double_fb = alloc(layout);
+            if double_fb.is_null() {
+                println!(
+                    "{}:{}: could not allocate double framebuffer",
+                    file!(),
+                    line!()
+                );
+                return None;
+            }
 
-        if double_fb.is_null() {
-            return None;
+            core::ptr::write_bytes(double_fb, 0, height as usize * pitch as usize);
+
+            Some(Framebuffer {
+                width,
+                height,
+                pitch,
+                addr,
+                red_field_pos,
+                red_mask_size,
+                green_field_pos,
+                green_mask_size,
+                blue_field_pos,
+                blue_mask_size,
+                bpp: 32,
+                bpp_b: 4,
+                double_fb,
+                mem_len: height * pitch,
+            })
+        } else {
+            println!(
+                "{}:{}: could not create layout for double framebuffer",
+                file!(),
+                line!()
+            );
+            None
         }
-
-        core::ptr::write_bytes(double_fb, 0, height as usize * pitch as usize);
-
-        Some(Framebuffer {
-            width,
-            height,
-            pitch,
-            addr,
-            red_field_pos,
-            red_mask_size,
-            green_field_pos,
-            green_mask_size,
-            blue_field_pos,
-            blue_mask_size,
-            bpp: 32,
-            bpp_b: 4,
-            double_fb,
-            mem_len: height * pitch,
-        })
     }
 
-    pub unsafe fn from_multiboot(tag: *const MultibootFramebufferTag) -> Option<Framebuffer> {
-        Framebuffer::new(
-            (*tag).width,
-            (*tag).height,
-            (*tag).pitch,
-            (*tag).addr as *mut u8,
-            (*tag).red_field_pos,
-            (*tag).red_mask_size,
-            (*tag).green_field_pos,
-            (*tag).green_mask_size,
-            (*tag).blue_field_pos,
-            (*tag).blue_mask_size,
-            (*tag).bpp,
-        )
+    pub unsafe fn from_multiboot() -> Option<Framebuffer> {
+        if let Some(tag) = get_framebuffer_tag() {
+            Framebuffer::new(
+                (*tag).width,
+                (*tag).height,
+                (*tag).pitch,
+                (*tag).addr as *mut u8,
+                (*tag).red_field_pos,
+                (*tag).red_mask_size,
+                (*tag).green_field_pos,
+                (*tag).green_mask_size,
+                (*tag).blue_field_pos,
+                (*tag).blue_mask_size,
+                (*tag).bpp,
+            )
+        } else {
+            None
+        }
     }
 
     #[inline(always)]

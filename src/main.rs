@@ -30,19 +30,42 @@ pub mod pic;
 pub mod range;
 pub mod vga;
 
-use crate::acpi::{FADT, SDT, get_acpi_tag, get_sdt};
+use crate::acpi::get_fadt;
 use crate::allocator::initialize_allocator;
-use crate::fb::{Framebuffer, get_framebuffer_tag};
+use crate::fb::Framebuffer;
 use crate::fbcli::FramebufferCLI;
 use crate::idt::initialize_idt;
-use crate::mem::{get_biggest_usable_pool, get_memory_map_tag};
+use crate::mem::get_biggest_usable_pool_multiboot;
 use crate::multiboot::MultibootInfo;
-use crate::panic::_hcf;
 use crate::pic::{PIC, PIC_DRIVER};
 use core::arch::asm;
+use spin::Mutex;
+
+#[derive(Clone, Copy, Debug)]
+pub struct SendablePtr {
+    pub ptr: *const (),
+}
+
+unsafe impl Send for SendablePtr {}
+
+static MULTIBOOT_INFO: Mutex<Option<SendablePtr>> = Mutex::new(None);
+
+pub fn get_multiboot_info() -> *const MultibootInfo {
+    let lock = *MULTIBOOT_INFO.lock();
+    match lock {
+        Some(x) => x.ptr as *const MultibootInfo,
+        None => {
+            panic!("Access of multiboot2 pointer via get_multiboot_info() before initialization")
+        }
+    }
+}
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
+    *MULTIBOOT_INFO.lock() = Some(SendablePtr {
+        ptr: mb2_info as *const (),
+    });
+
     {
         let mut lock = PIC_DRIVER.lock();
         *lock = Some(PIC::new());
@@ -52,53 +75,20 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
 
     initialize_idt();
 
-    let memory_map_tag = get_memory_map_tag(mb2_info);
-    if memory_map_tag.is_none() {
-        println!("No memory map tag found!");
-        _hcf();
-    }
-
-    let biggest_usable_memory_pool = get_biggest_usable_pool(memory_map_tag.unwrap());
+    let biggest_usable_memory_pool = get_biggest_usable_pool_multiboot();
     if biggest_usable_memory_pool.is_none() {
-        println!("No usable memory pools!");
-        _hcf();
+        panic!("{}:{}: No usable memory pools!", file!(), line!());
     }
 
     initialize_allocator(biggest_usable_memory_pool.unwrap());
 
-    let mut fb_i: bool = false;
-
-    if let Some(fbtag) = get_framebuffer_tag(mb2_info)
-        && let Some(fb) = Framebuffer::from_multiboot(fbtag)
-    {
-        fb_i = true;
+    if let Some(fb) = Framebuffer::from_multiboot() {
         fbcli::init(FramebufferCLI::new(fb));
     }
 
-    println!("Initialized:");
-    println!("\t- E9");
-    println!("\t- VGA");
-    if fb_i {
-        println!("\t- Framebuffer");
-        println!("\t- Framebuffer CLI");
-    }
+    println!("{:?}", get_fadt());
 
-    println!("\t- Allocator");
     println!("Welcome to qos!");
-
-    if let Some(acpi_tag) = get_acpi_tag(mb2_info) {
-        if let Some(sdt) = get_sdt(acpi_tag, b"FACP") {
-            println!("{:?}", sdt);
-            println!(
-                "{:?}",
-                *(((&raw const *sdt) as *const u8).add(core::mem::size_of::<SDT>()) as *const FADT)
-            )
-        } else {
-            println!("Could not find FADT!");
-        }
-    } else {
-        println!("Could not find ACPI tag!");
-    }
 
     loop {
         asm!("hlt")
