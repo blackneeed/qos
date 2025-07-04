@@ -61,9 +61,9 @@ impl SDT {
 #[repr(C, packed)]
 #[derive(Debug)]
 pub struct FADT {
-    pub firmware_ctrl: u32,
+    pub frmw_ctrl: u32,
     pub dsdt_addr: u32,
-    pub interrupt_model: u8,
+    pub reserved: u8,
     pub preferred_power_mgmt_prof: u8,
     pub sci_interrupt: u16,
     pub smm_interrupt_command_port: u32,
@@ -95,10 +95,23 @@ pub struct FADT {
     pub day_alarm: u8,
     pub month_alarm: u8,
     pub century: u8,
-    pub reserved: u16,
-    pub reserved2: u8,
+    pub boot_arch_flags: u16,
+    pub reserved3: u8,
     pub flags: u32,
     pub reset_register: GAS,
+    pub reset_value: u8,
+    pub reserved4: u16,
+    pub reserved5: u8,
+    pub x_frmw_ctrl: GAS,
+    pub x_dsdt: GAS,
+    pub x_pm1a_event_block: GAS,
+    pub x_pm1b_event_block: GAS,
+    pub x_pm1a_ctrl_block: GAS,
+    pub x_pm1b_ctrl_block: GAS,
+    pub x_pm2_ctrl_block: GAS,
+    pub x_pm_timer_block: GAS,
+    pub x_gpe0_block: GAS,
+    pub x_gpe1_block: GAS,
 }
 
 #[repr(C, packed)]
