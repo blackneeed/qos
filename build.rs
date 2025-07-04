@@ -27,4 +27,7 @@ fn main() {
             Err(e) => eprintln!("{e:?}"),
         }
     }
+
+    println!("cargo:rustc-link-arg=flanterm.o");
+    println!("cargo:rustc-link-arg=flanterm_fb_backend.o");
 }

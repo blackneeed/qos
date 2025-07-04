@@ -34,16 +34,13 @@ pub mod vga;
 
 use crate::acpi::acpi_init;
 use crate::allocator::initialize_allocator;
-use crate::fb::{Framebuffer, get_framebuffer_tag};
+use crate::fb::Framebuffer;
 use crate::fbcli::FramebufferCLI;
-use crate::flanterm::{flanterm_fb_init, flanterm_write};
 use crate::idt::initialize_idt;
 use crate::mem::get_biggest_usable_pool_multiboot;
 use crate::multiboot::MultibootInfo;
 use crate::pic::{PIC, PIC_DRIVER};
 use core::arch::asm;
-use core::ffi::c_void;
-use core::ptr::null;
 use spin::Mutex;
 
 #[derive(Clone, Copy, Debug)]
@@ -87,37 +84,8 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
 
     initialize_allocator(biggest_usable_memory_pool.unwrap());
 
-    if let Some(fb_tag) = get_framebuffer_tag() {
-        let ctx = flanterm_fb_init(
-            None,
-            None,
-            (*fb_tag).addr as *mut u32,
-            (*fb_tag).width as usize,
-            (*fb_tag).height as usize,
-            (*fb_tag).pitch as usize,
-            (*fb_tag).red_mask_size,
-            (*fb_tag).red_field_pos,
-            (*fb_tag).green_mask_size,
-            (*fb_tag).green_field_pos,
-            (*fb_tag).blue_mask_size,
-            (*fb_tag).blue_field_pos,
-            null::<u32>() as *mut u32,
-            null::<u32>() as *mut u32,
-            null::<u32>() as *mut u32,
-            null::<u32>() as *mut u32,
-            null::<u32>() as *mut u32,
-            null::<u32>() as *mut u32,
-            null::<u32>() as *mut u32,
-            null::<c_void>() as *mut c_void,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-        );
-
-        flanterm_write(ctx, b"lol".as_ptr(), 3);
+    if let Some(fb) = Framebuffer::from_multiboot() {
+        crate::fbcli::init(FramebufferCLI::new(fb));
     }
 
     acpi_init();
