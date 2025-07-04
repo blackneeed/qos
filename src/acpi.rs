@@ -125,9 +125,6 @@ pub struct GAS {
     pub address: u64,
 }
 
-#[repr(C, packed)]
-#[derive(Debug)]
-
 impl core::fmt::Debug for GAS {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         return f
