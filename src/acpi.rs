@@ -127,14 +127,13 @@ pub struct GAS {
 
 impl core::fmt::Debug for GAS {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        return f
-            .debug_struct("GAS")
+        f.debug_struct("GAS")
             .field("address_space", &self.address_space)
             .field("bit_width", &self.bit_width)
             .field("bit_offset", &self.bit_offset)
             .field("access_size", &self.access_size)
             .field("address", &(self.address - 0))
-            .finish();
+            .finish()
     }
 }
 
