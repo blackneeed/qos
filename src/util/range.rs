@@ -1,5 +1,3 @@
-use core::option::Option::{None, Some};
-
 #[derive(Debug)]
 pub struct Range {
     pub start: u32,
@@ -44,4 +42,3 @@ pub enum ChopResult {
     One(Range),
     Two(Range, Range),
 }
-

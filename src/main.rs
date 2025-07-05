@@ -12,34 +12,20 @@
 
 extern crate alloc;
 
-pub mod acpi;
-pub mod allocator;
-pub mod ata;
-pub mod disk;
-pub mod e9;
-pub mod fb;
-pub mod fbcli;
-pub mod flanterm;
-pub mod font;
-pub mod idt;
-pub mod io;
-pub mod ioport;
-pub mod kernel;
+pub mod boot;
+pub mod drv;
 pub mod mem;
-pub mod multiboot;
-pub mod panic;
-pub mod pic;
-pub mod range;
-pub mod vga;
+pub mod tables;
+pub mod util;
 
-use crate::acpi::acpi_init;
-use crate::allocator::initialize_allocator;
-use crate::fb::Framebuffer;
-use crate::fbcli::FramebufferCLI;
-use crate::idt::initialize_idt;
-use crate::mem::get_biggest_usable_pool_multiboot;
-use crate::multiboot::MultibootInfo;
-use crate::pic::{PIC, PIC_DRIVER};
+use crate::boot::multiboot::MultibootInfo;
+use crate::drv::fb::fbcli::{FramebufferCLI, init as fbcli_init};
+use crate::drv::io::mm::fb::Framebuffer;
+use crate::drv::io::pic::{PIC, PIC_DRIVER};
+use crate::mem::allocator::initialize_allocator;
+use crate::mem::pmm::get_biggest_usable_pool_multiboot;
+use crate::tables::acpi::acpi_init;
+use crate::tables::idt::initialize_idt;
 use core::arch::asm;
 use spin::Mutex;
 
@@ -85,12 +71,12 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
     initialize_allocator(biggest_usable_memory_pool.unwrap());
 
     if let Some(fb) = Framebuffer::from_multiboot() {
-        crate::fbcli::init(FramebufferCLI::new(fb));
+        fbcli_init(FramebufferCLI::new(fb));
     }
 
     acpi_init();
 
-    println!("Welcome to qos!");
+    kprintln!("Welcome to qos!");
 
     loop {
         asm!("hlt")

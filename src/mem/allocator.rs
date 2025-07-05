@@ -1,4 +1,4 @@
-use crate::range::Range;
+use crate::util::range::Range;
 use linked_list_allocator::LockedHeap;
 
 #[global_allocator]

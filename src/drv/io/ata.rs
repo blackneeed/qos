@@ -1,4 +1,4 @@
-use crate::ioport::{inb, inw, outb};
+use crate::drv::io::ioport::{inb, inw, outb};
 use fatfs::{IoBase, Read, Seek, SeekFrom, Write};
 
 pub struct ATADrive {

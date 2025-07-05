@@ -1,8 +1,6 @@
-use crate::{
-    ioport::outb,
-    multiboot::{MultibootInfoTag, get_tag},
-    println,
-};
+use crate::boot::multiboot::{MultibootInfoTag, get_tag};
+use crate::drv::io::ioport::outb;
+use crate::kprintln;
 
 #[repr(C, packed)]
 #[derive(Debug)]
@@ -164,7 +162,7 @@ pub unsafe fn get_rsdp() -> Option<*const RSDP> {
 
             return Some(addr as *const RSDP);
         }
-        println!("{}:{}: could not find RSDP", file!(), line!());
+        kprintln!("{}:{}: could not find RSDP", file!(), line!());
         None
     }
 }
@@ -181,7 +179,7 @@ pub unsafe fn get_sdt(signature: &[u8; 4]) -> Option<&'static SDT> {
             _ => {
                 let xsdt_addr = (*(rsdp as *const XSDP)).xsdt_addr;
                 if xsdt_addr >= u32::MAX as u64 {
-                    println!(
+                    kprintln!(
                         "{}:{}: XSDT address > 4GB, can't access XSDT",
                         file!(),
                         line!()
@@ -194,7 +192,7 @@ pub unsafe fn get_sdt(signature: &[u8; 4]) -> Option<&'static SDT> {
                     .map(|x| match x > u32::MAX as u64 {
                         false => Some(&*(x as *const SDT)),
                         true => {
-                            println!(
+                            kprintln!(
                                 "{}:{}: found matching SDT but address > 4GB, skipping",
                                 file!(),
                                 line!()
@@ -206,7 +204,7 @@ pub unsafe fn get_sdt(signature: &[u8; 4]) -> Option<&'static SDT> {
             }
         }
     } else {
-        println!(
+        kprintln!(
             "{}:{}: couldn't find SDT '{}'",
             file!(),
             line!(),
@@ -235,7 +233,7 @@ pub unsafe fn acpi_init() {
     }
 
     if let Some(madt) = get_sdt(b"APIC") {
-        println!(
+        kprintln!(
             "Local APIC address: {:#08X}",
             core::ptr::read_unaligned(
                 ((&raw const *madt) as *const u8)
@@ -244,7 +242,7 @@ pub unsafe fn acpi_init() {
             ),
         );
 
-        println!(
+        kprintln!(
             "Legacy 8259 PICs{} installed",
             match ((core::ptr::read_unaligned(
                 ((&raw const *madt) as *const u8)
@@ -271,10 +269,10 @@ pub unsafe fn acpi_init() {
 
             match entry_type {
                 0 => {
-                    println!("Processor LAPIC");
-                    println!("\tACPI Processor ID: {}", *entry_address);
-                    println!("\tAPIC ID: {}", *entry_address.add(1));
-                    println!(
+                    kprintln!("Processor LAPIC");
+                    kprintln!("\tACPI Processor ID: {}", *entry_address);
+                    kprintln!("\tAPIC ID: {}", *entry_address.add(1));
+                    kprintln!(
                         "\tprocessor can{} be enabled",
                         if (((*entry_address.add(2)) & 1) | ((*entry_address.add(2)) & 2)) != 0 {
                             ""
@@ -284,71 +282,71 @@ pub unsafe fn acpi_init() {
                     );
                 }
                 1 => {
-                    println!("I/O APIC");
-                    println!("\tID: {}", *entry_address);
-                    println!(
+                    kprintln!("I/O APIC");
+                    kprintln!("\tID: {}", *entry_address);
+                    kprintln!(
                         "\tAddress: {}",
                         core::ptr::read_unaligned(entry_address.add(2) as *const u32)
                     );
-                    println!(
+                    kprintln!(
                         "\tGSI Base: {}",
                         core::ptr::read_unaligned(entry_address.add(6) as *const u32)
                     );
                 }
                 2 => {
-                    println!("I/O APIC Interrupt Source Override");
-                    println!("\tBus source: {}", *entry_address);
-                    println!("\tIRQ source: {}", *entry_address.add(1));
-                    println!(
+                    kprintln!("I/O APIC Interrupt Source Override");
+                    kprintln!("\tBus source: {}", *entry_address);
+                    kprintln!("\tIRQ source: {}", *entry_address.add(1));
+                    kprintln!(
                         "\tGSI: {}",
                         core::ptr::read_unaligned(entry_address.add(2) as *const u32)
                     );
-                    println!(
+                    kprintln!(
                         "\tFlags: {}",
                         core::ptr::read_unaligned(entry_address.add(6) as *const u16)
                     );
                 }
                 3 => {
-                    println!("I/O APIC Non-maskable interrupt source");
-                    println!("\tNMI Source: {}", *entry_address);
-                    println!(
+                    kprintln!("I/O APIC Non-maskable interrupt source");
+                    kprintln!("\tNMI Source: {}", *entry_address);
+                    kprintln!(
                         "\tFlags: {}",
                         core::ptr::read_unaligned(entry_address.add(2) as *const u16)
                     );
-                    println!(
+                    kprintln!(
                         "\tGSI: {}",
                         core::ptr::read_unaligned(entry_address.add(4) as *const u32)
                     );
                 }
                 4 => {
-                    println!("LAPIC Non-maskable interrupts");
-                    println!(
+                    kprintln!("LAPIC Non-maskable interrupts");
+                    kprintln!(
                         "\tACPI Processor ID: {}{}",
                         *entry_address,
                         if *entry_address == 0xFF { " (all)" } else { "" }
                     );
-                    println!(
+                    kprintln!(
                         "\tFlags: {}",
                         core::ptr::read_unaligned(entry_address.add(1) as *const u16)
                     );
-                    println!("\tLINT{}", *entry_address.add(3));
+                    kprintln!("\tLINT{}", *entry_address.add(3));
                 }
                 5 => {
-                    println!(
+                    kprintln!(
                         "{}:{}: found LAPIC address override entry in MADT, skipping!",
                         file!(),
                         line!()
                     )
                 }
                 9 => {
-                    println!(
+                    kprintln!(
                         "{}:{}: found x2APIC entry in MADT, skipping!",
                         file!(),
                         line!()
                     );
                 }
                 _ => {
-                    println!(
+                    kprintln!(
                         "{}:{}: found unknown entry type {} in MADT, skipping!",
                         file!(),
                         line!(),

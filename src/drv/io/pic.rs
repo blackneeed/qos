@@ -1,5 +1,4 @@
-use crate::ioport::{inb, outb};
-use core::option::Option::{self, None};
+use crate::drv::io::ioport::{inb, outb};
 use spin::Mutex;
 
 pub struct PIC {

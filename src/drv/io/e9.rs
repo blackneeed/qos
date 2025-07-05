@@ -1,4 +1,4 @@
-use crate::ioport::outb;
+use crate::drv::io::ioport::outb;
 use core::fmt::{self, Arguments, Write};
 use core::result::Result::Ok;
 use spin::Mutex;

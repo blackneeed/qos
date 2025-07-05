@@ -1,9 +1,6 @@
-use crate::{
-    font::Font,
-    mem::memset32,
-    multiboot::{MultibootFramebufferTag, get_tag},
-    println,
-};
+use crate::boot::multiboot::{MultibootFramebufferTag, get_tag};
+use crate::kprintln;
+use crate::mem::pmm::memset32;
 
 use alloc::alloc::alloc;
 use core::alloc::Layout;
@@ -51,7 +48,7 @@ impl Framebuffer {
         if let Ok(layout) = Layout::from_size_align(height as usize * pitch as usize, 4) {
             let double_fb = alloc(layout);
             if double_fb.is_null() {
-                println!(
+                kprintln!(
                     "{}:{}: could not allocate double framebuffer",
                     file!(),
                     line!()
@@ -78,7 +75,7 @@ impl Framebuffer {
                 mem_len: height * pitch,
             })
         } else {
-            println!(
+            kprintln!(
                 "{}:{}: could not create layout for double framebuffer",
                 file!(),
                 line!()
@@ -138,32 +135,6 @@ impl Framebuffer {
     pub unsafe fn put_pixel(&self, col: u32, x: u32, y: u32) // 0xAARRGGBB (alpha unhandled)
     {
         *self.get_pixel_ptr(x, y) = self.color_packed(col);
-    }
-
-    pub unsafe fn put_char(
-        &mut self,
-        font: &Font,
-        chr: u8,
-        col: u32,
-        bgcol: u32,
-        x: u32,
-        y: u32,
-    ) -> Result<(), ()> {
-        if let Some(glyph) = font.retrieve_glyph(chr)
-            && let Some(data) = &glyph.data
-        {
-            for fy in 0..font.height {
-                for fb in 0u8..8 {
-                    if (data[fy as usize] & ((1 << 7) >> fb)) > 0 {
-                        self.put_pixel(col, x + fb as u32, y + fy as u32);
-                    } else {
-                        self.put_pixel(bgcol, x + fb as u32, y + fy as u32);
-                    }
-                }
-            }
-            return Ok(());
-        }
-        Err(())
     }
 
     pub unsafe fn draw_line(&mut self, col: u32, w: u32, x: u32, y: u32) {
