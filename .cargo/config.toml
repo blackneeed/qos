@@ -1,8 +1,8 @@
 [build]
-target = "target.json"
+target = "compiletime/target.json"
 
 [target.'cfg(all())']
-rustflags = ["-C", "link-arg=-Tlinker.ld"]
+rustflags = ["-C", "link-arg=-Tcompiletime/linker.ld"]
 
 [target.'cfg(target_os = "none")']
 runner = "scripts/run.sh"

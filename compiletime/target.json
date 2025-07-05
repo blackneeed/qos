@@ -21,6 +21,6 @@
   "no-default-libraries": true,
   "position-independent-executables": false,
   "pre-link-args": {
-    "ld.lld": ["--script=linker.ld"]
+    "ld.lld": ["--script=compiletime/linker.ld"]
   }
 }

@@ -1,5 +1,4 @@
 use crate::get_multiboot_info;
-use crate::println;
 
 #[repr(C, packed)]
 #[derive(Debug)]
@@ -64,7 +63,6 @@ pub unsafe fn get_tag(type_: u32) -> Option<*const MultibootInfoTag> {
     let mut tag_ptr = (&raw const (*mb2_info).tags) as *const MultibootInfoTag;
     loop {
         if (*tag_ptr).type_ == 0 {
-            println!("{}:{}: tag of type {} not present", file!(), line!(), type_);
             return None;
         }
 

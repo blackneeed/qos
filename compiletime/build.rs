@@ -28,6 +28,6 @@ fn main() {
         }
     }
 
-    println!("cargo:rustc-link-arg=flanterm.o");
-    println!("cargo:rustc-link-arg=flanterm_fb_backend.o");
+    println!("cargo:rustc-link-arg=prebuilt/flanterm.o");
+    println!("cargo:rustc-link-arg=prebuilt/flanterm_fb_backend.o");
 }

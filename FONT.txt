@@ -1,3 +1,0 @@
-Glyph Height u8
-Glyph Count u8
-row * Glyph Height * Glyph Count

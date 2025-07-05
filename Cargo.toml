@@ -2,7 +2,7 @@
 name = "qos"
 version = "0.1.0"
 edition = "2024"
-build = "build.rs"
+build = "compiletime/build.rs"
 
 [dependencies]
 fatfs = { default-features = false, features = ["alloc", "lfn"],  git = "https://github.com/rafalh/rust-fatfs" }
