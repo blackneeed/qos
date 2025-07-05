@@ -78,6 +78,6 @@ pub fn initialized() -> bool {
     return FBCLI_WRITER.lock().is_some();
 }
 
-pub fn init(instance: FramebufferCLI) {
-    *FBCLI_WRITER.lock() = Some(instance);
+pub fn init(fb: Framebuffer) {
+    *FBCLI_WRITER.lock() = Some(FramebufferCLI::new(fb));
 }

@@ -1,22 +1,17 @@
 use crate::drv::fb::fbcli::{fbcli_print, fbcli_println, initialized as fbcli_initialized};
 use crate::drv::io::e9::{e9_print, e9_println};
-use crate::drv::io::mm::vga::{vga_print, vga_println};
 use core::fmt::Arguments;
 
 pub fn kprint(args: Arguments<'_>) {
     e9_print(args);
-    if !fbcli_initialized() {
-        vga_print(args);
-    } else {
+    if fbcli_initialized() {
         fbcli_print(args);
     }
 }
 
 pub fn kprintln(args: Arguments<'_>) {
     e9_println(args);
-    if !fbcli_initialized() {
-        vga_println(args);
-    } else {
+    if fbcli_initialized() {
         fbcli_println(args);
     }
 }

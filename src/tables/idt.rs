@@ -1,4 +1,3 @@
-use crate::drv::io::pic::PIC_DRIVER;
 use crate::kprintln;
 use crate::util::panic::_hcf;
 use core::mem::size_of;
@@ -46,21 +45,12 @@ pub unsafe extern "C" fn interrupt_handler(interrupt_number: u32, _error_code: u
         _hcf();
     }
 
-    {
-        let mut lock = PIC_DRIVER.lock();
-
-        if let Some(pic) = lock.as_mut() {
-            let master = pic.get_master_offset() as u32;
-            let slave = pic.get_slave_offset() as u32;
-            if interrupt_number >= master && interrupt_number <= master + 7 {
-                kprintln!("IRQ {:03}", interrupt_number - master);
-                pic.eoi_master();
-            } else if interrupt_number >= slave && interrupt_number <= slave + 7 {
-                kprintln!("IRQ {:03}", interrupt_number - slave);
-                pic.eoi_slave();
-            }
-        }
-    }
+    kprintln!(
+        "{}:{}: unhandled isr {}",
+        file!(),
+        line!(),
+        interrupt_number
+    );
 }
 
 pub unsafe fn initialize_idt() {

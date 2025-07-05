@@ -162,8 +162,7 @@ pub unsafe fn get_rsdp() -> Option<*const RSDP> {
 
             return Some(addr as *const RSDP);
         }
-        kprintln!("{}:{}: could not find RSDP", file!(), line!());
-        None
+        panic!("{}:{}: could not find RSDP", file!(), line!());
     }
 }
 

@@ -9,6 +9,12 @@ pub unsafe fn _hcf() -> ! {
     }
 }
 
+pub unsafe fn infhlt() -> ! {
+    loop {
+        asm!("hlt");
+    }
+}
+
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     kprintln!("{}", _info.message());
@@ -16,4 +22,3 @@ fn panic(_info: &PanicInfo) -> ! {
         _hcf();
     }
 }
-

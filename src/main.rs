@@ -19,14 +19,14 @@ pub mod tables;
 pub mod util;
 
 use crate::boot::multiboot::MultibootInfo;
-use crate::drv::fb::fbcli::{FramebufferCLI, init as fbcli_init};
+use crate::drv::fb::fbcli::init as fbcli_init;
 use crate::drv::io::mm::fb::Framebuffer;
-use crate::drv::io::pic::{PIC, PIC_DRIVER};
+use crate::drv::io::pic::mask_all as pic_mask_all;
 use crate::mem::allocator::initialize_allocator;
 use crate::mem::pmm::get_biggest_usable_pool_multiboot;
 use crate::tables::acpi::acpi_init;
 use crate::tables::idt::initialize_idt;
-use core::arch::asm;
+use crate::util::panic::infhlt;
 use spin::Mutex;
 
 #[derive(Clone, Copy, Debug)]
@@ -43,42 +43,28 @@ pub fn get_multiboot_info() -> *const MultibootInfo {
     match lock {
         Some(x) => x.ptr as *const MultibootInfo,
         None => {
-            panic!("Access of multiboot2 pointer via get_multiboot_info() before initialization")
+            panic!(
+                "{}:{}: access of multiboot2 pointer via get_multiboot_info() before initialization",
+                file!(),
+                line!()
+            )
         }
     }
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
+fn init_multiboot_info(mb2_info: *const MultibootInfo) {
     *MULTIBOOT_INFO.lock() = Some(SendablePtr {
         ptr: mb2_info as *const (),
     });
+}
 
-    {
-        let mut lock = PIC_DRIVER.lock();
-        *lock = Some(PIC::new());
-        let pic = lock.as_mut().unwrap();
-        pic.remap(32, 40);
-    }
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
+    init_multiboot_info(mb2_info);
+    pic_mask_all();
     initialize_idt();
-
-    let biggest_usable_memory_pool = get_biggest_usable_pool_multiboot();
-    if biggest_usable_memory_pool.is_none() {
-        panic!("{}:{}: No usable memory pools!", file!(), line!());
-    }
-
-    initialize_allocator(biggest_usable_memory_pool.unwrap());
-
-    if let Some(fb) = Framebuffer::from_multiboot() {
-        fbcli_init(FramebufferCLI::new(fb));
-    }
-
+    initialize_allocator(get_biggest_usable_pool_multiboot().expect("no usable memory pools"));
+    fbcli_init(Framebuffer::from_multiboot().expect("framebuffer not available"));
     acpi_init();
-
-    kprintln!("Welcome to qos!");
-
-    loop {
-        asm!("hlt")
-    }
+    infhlt();
 }
