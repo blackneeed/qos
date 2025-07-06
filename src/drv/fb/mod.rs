@@ -1,2 +1,2 @@
-pub mod fbcli;
 pub mod flanterm;
+pub mod tty;

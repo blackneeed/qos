@@ -1,5 +1,5 @@
-use crate::kprintln;
 use crate::util::panic::_hcf;
+use crate::{dprintln, kprintln};
 use core::mem::size_of;
 
 #[repr(C, packed)]
@@ -45,6 +45,11 @@ pub unsafe extern "C" fn interrupt_handler(interrupt_number: u32, _error_code: u
         _hcf();
     }
 
+    if interrupt_number == 40 {
+        dprintln!("What the PIT");
+        return;
+    }
+
     kprintln!(
         "{}:{}: unhandled isr {}",
         file!(),
@@ -65,7 +70,9 @@ pub unsafe fn initialize_idt() {
         IDT.0[i].reserved = 0;
     }
 
+    dprintln!("Created IDT");
     load_idt(&raw const IDTR);
+    dprintln!("Loaded IDT");
 }
 
 unsafe extern "C" {

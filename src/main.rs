@@ -19,8 +19,9 @@ pub mod tables;
 pub mod util;
 
 use crate::boot::multiboot::MultibootInfo;
-use crate::drv::fb::fbcli::init as fbcli_init;
+use crate::drv::fb::tty::init as tty_init;
 use crate::drv::io::mm::fb::Framebuffer;
+use crate::drv::io::mm::ioapic::IOAPIC;
 use crate::drv::io::pic::mask_all as pic_mask_all;
 use crate::mem::allocator::initialize_allocator;
 use crate::mem::pmm::get_biggest_usable_pool_multiboot;
@@ -60,11 +61,20 @@ fn init_multiboot_info(mb2_info: *const MultibootInfo) {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
+    dprintln!("Kernel booted");
     init_multiboot_info(mb2_info);
     pic_mask_all();
     initialize_idt();
     initialize_allocator(get_biggest_usable_pool_multiboot().expect("no usable memory pools"));
-    fbcli_init(Framebuffer::from_multiboot().expect("framebuffer not available"));
+    tty_init(Framebuffer::from_multiboot().expect("framebuffer not available"));
     acpi_init();
+
+    let gsi = IOAPIC::gsi_for_irq(0);
+    let flags = IOAPIC::flags_for_irq(0);
+    dprintln!("{gsi}");
+    let ioapic = IOAPIC::ioapic_for_gsi(gsi).expect("How do we not have a IOAPIC for that GSI");
+    ioapic.redirect_gsi(40, 0, gsi, flags);
+    // we should have PS/2 keyboard (IRQ 1) at interrupt 40
+
     infhlt();
 }
