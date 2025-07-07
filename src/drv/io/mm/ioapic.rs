@@ -1,6 +1,8 @@
 use crate::arch::msr::wrmsr;
 use crate::dprintln;
 use crate::tables::acpi::{IOAPIC_ISOS, IOAPICS, LAPIC_ADDR, MADTIOAPIC};
+use alloc::boxed::Box;
+use hashbrown::HashMap;
 use spin::Mutex;
 
 const IOREGSEL_OFF: u32 = 0x00;
@@ -8,6 +10,7 @@ const IOREGWIN_OFF: u32 = 0x10;
 const IOAPICID_REG: u32 = 0x00;
 const IOAPICVER_REG: u32 = 0x01;
 
+#[derive(Clone)]
 pub struct IOAPIC {
     pub madt: MADTIOAPIC,
     pub version: u8,
@@ -15,26 +18,53 @@ pub struct IOAPIC {
 }
 
 static LAPIC_ENABLED: Mutex<bool> = Mutex::new(false);
+static IOAPIC_CACHE: Mutex<Option<HashMap<u8, &IOAPIC>>> = Mutex::new(None);
 
 impl IOAPIC {
     pub unsafe fn new(madt: MADTIOAPIC) -> Result<IOAPIC, &'static str> {
-        *((madt.address as *mut u8).add(IOREGSEL_OFF as usize) as *mut u32) = IOAPICID_REG;
-        if ((*((madt.address as *mut u8).add(IOREGWIN_OFF as usize) as *mut u32) >> 24) & 0xFF)
-            as u8
+        if let Some(cache) = &*IOAPIC_CACHE.lock()
+            && let Some(&ioapic) = cache.get(&madt.id)
+        {
+            dprintln!("Found I/O APIC in cache.");
+            return Ok(ioapic.clone());
+        }
+
+        core::ptr::write_volatile(
+            (madt.address as *mut u8).add(IOREGSEL_OFF as usize) as *mut u32,
+            IOAPICID_REG,
+        );
+
+        if ((core::ptr::read_volatile(
+            (madt.address as *mut u8).add(IOREGWIN_OFF as usize) as *mut u32
+        ) >> 24)
+            & 0xFF) as u8
             != madt.id
         {
             return Err("APIC ID Mismatch");
         }
 
-        *((madt.address as *mut u8).add(IOREGSEL_OFF as usize) as *mut u32) = IOAPICVER_REG;
-        let version = ((*((madt.address as *mut u8).add(IOREGWIN_OFF as usize) as *mut u32) >> 24)
+        core::ptr::write_volatile(
+            (madt.address as *mut u8).add(IOREGSEL_OFF as usize) as *mut u32,
+            IOAPICVER_REG,
+        );
+
+        let version = ((core::ptr::read_volatile(
+            (madt.address as *mut u8).add(IOREGWIN_OFF as usize) as *mut u32,
+        ) >> 24)
             & 0xFF) as u8;
 
-        *((madt.address as *mut u8).add(IOREGSEL_OFF as usize) as *mut u32) = IOAPICVER_REG;
+        core::ptr::write_volatile(
+            (madt.address as *mut u8).add(IOREGSEL_OFF as usize) as *mut u32,
+            IOAPICVER_REG,
+        );
 
-        let entry_count = (((*((madt.address as *mut u8).add(IOREGWIN_OFF as usize) as *mut u32))
-            >> 16)
+        let entry_count = ((((core::ptr::read_volatile(
+            (madt.address as *mut u8).add(IOREGWIN_OFF as usize) as *mut u32,
+        )) >> 16)
+            & 0xFF)
             + 1) as u8;
+
+        dprintln!("{}", entry_count);
 
         let x = IOAPIC {
             madt,
@@ -48,8 +78,10 @@ impl IOAPIC {
             let mut lock = LAPIC_ENABLED.lock();
             if !*lock {
                 if let Some(addr) = *LAPIC_ADDR.lock() {
-                    let old = *((addr + 0xF0) as *const u32);
-                    *((addr + 0xF0) as *mut u32) = old | 0x100;
+                    core::ptr::write_volatile(
+                        (addr + 0xF0) as *mut u32,
+                        core::ptr::read_volatile((addr + 0xF0) as *const u32) | 0x100,
+                    );
                     wrmsr(0x1B, (1 << 8) | (1 << 11) | (addr as u64));
                     *lock = true;
                     dprintln!("Initialized LAPIC for I/O APIC");
@@ -59,7 +91,17 @@ impl IOAPIC {
             }
         }
 
-        Ok(x)
+        let mut lock = IOAPIC_CACHE.lock();
+
+        if lock.is_none() {
+            *lock = Some(HashMap::new());
+        }
+
+        lock.as_mut()
+            .unwrap()
+            .insert(madt.id, Box::leak(Box::new(x)));
+
+        Ok((*lock.as_ref().unwrap().get(&madt.id).unwrap()).clone())
     }
 
     pub unsafe fn ioapic_for_gsi(gsi: u32) -> Option<IOAPIC> {

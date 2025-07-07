@@ -1,4 +1,8 @@
-use crate::drv::io::ioport::inb;
+use hashbrown::HashMap;
+use spin::Mutex;
+
+use crate::arch::core::Core;
+use crate::drv::io::mm::ioapic::IOAPIC;
 use crate::tables::acpi::LAPIC_ADDR;
 use crate::util::panic::_hcf;
 use crate::{dprintln, kprintln};
@@ -15,7 +19,7 @@ pub struct IDT32Entry {
 }
 
 #[repr(C, packed)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IDT32 {
     limit: u16,
     base: u32,
@@ -38,7 +42,10 @@ static mut IDT: AlignedIDT = AlignedIDT(
     }; 256],
 );
 
-static mut IDTR: IDT32 = IDT32 { base: 0, limit: 0 };
+type IRQHashMap = HashMap<u8, fn()>; // clippy keeps complaining about some complex type bullshit
+
+static IDTR: Mutex<Option<IDT32>> = Mutex::new(None);
+static IRQS: Mutex<Option<IRQHashMap>> = Mutex::new(None);
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn interrupt_handler(interrupt_number: u32, error_code: u32) {
@@ -51,24 +58,26 @@ pub unsafe extern "C" fn interrupt_handler(interrupt_number: u32, error_code: u3
         _hcf();
     }
 
-    if interrupt_number == 33 {
-        dprintln!("kb");
-        inb(0x60);
-        *((LAPIC_ADDR.lock().expect("IRQ sent when LAPIC addr == None") + 0xb0) as *mut u32) = 0;
-        return;
+    if let Some(handler) = IRQS
+        .lock()
+        .as_ref()
+        .unwrap()
+        .get(&((interrupt_number - 32) as u8))
+    {
+        handler();
+        core::ptr::write_volatile(
+            (LAPIC_ADDR.lock().expect("IRQ sent when LAPIC addr == None") + 0xb0) as *mut u32,
+            0,
+        );
     }
-
-    kprintln!(
-        "{}:{}: unhandled isr {}",
-        file!(),
-        line!(),
-        interrupt_number
-    );
 }
 
 pub unsafe fn initialize_idt() {
-    IDTR.base = &raw const IDT as *const _ as u32;
-    IDTR.limit = ((size_of::<IDT32Entry>() as u16) * 256) - 1;
+    *IRQS.lock() = Some(HashMap::new());
+    *IDTR.lock() = Some(IDT32 {
+        base: &raw const IDT as u32,
+        limit: ((size_of::<IDT32Entry>() as u16) * 256) - 1,
+    });
 
     for (i, _) in ISRS.iter().enumerate() {
         IDT.0[i].isr_low = ((ISRS[i].addr() as u32) & 0xFFFF) as u16;
@@ -79,11 +88,28 @@ pub unsafe fn initialize_idt() {
     }
 
     dprintln!("Created IDT");
-    load_idt(&raw const IDTR);
+}
+
+pub unsafe fn load_idt() {
+    let idtr = IDTR
+        .lock()
+        .clone()
+        .expect("load_idt called before initialization of IDT (before initialize_idt)")
+        .clone();
+
+    _lidt(&raw const idtr);
     dprintln!("Loaded IDT");
 }
 
+pub unsafe fn register_irq(irq: u8, func: fn()) {
+    let mut lock = IRQS.lock();
+    let val = lock.as_mut().unwrap();
+    val.insert(irq, func);
+
+    IOAPIC::redirect_irq(irq, irq as u32 + 32, Core::this().apic_id as u32, false)
+        .expect("could not redirect irq (in redirect_irq)");
+}
+
 unsafe extern "C" {
-    pub unsafe fn load_idt(idt: *const IDT32);
-    pub unsafe fn store_idt(dest: *mut IDT32);
+    unsafe fn _lidt(idt: *const IDT32);
 }
