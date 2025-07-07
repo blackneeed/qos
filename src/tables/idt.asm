@@ -286,16 +286,9 @@ ISRS:
 %endrep
 
 section .text
-extern load_idt
-load_idt:
+extern _lidt
+_lidt:
     mov eax, [esp + 4]
     lidt [eax]
-    sti
-    ret
-
-extern store_idt
-store_idt:
-    mov eax, [esp + 4]
-    sidt [eax]
     sti
     ret
