@@ -1,3 +1,4 @@
+use crate::arch::msr::wrmsr;
 use crate::dprintln;
 use crate::tables::acpi::{IOAPIC_ISOS, IOAPICS, LAPIC_ADDR, MADTIOAPIC};
 use spin::Mutex;
@@ -31,28 +32,34 @@ impl IOAPIC {
 
         *((madt.address as *mut u8).add(IOREGSEL_OFF as usize) as *mut u32) = IOAPICVER_REG;
 
-        let entry_count =
-            (*((madt.address as *mut u8).add(IOREGWIN_OFF as usize) as *mut u32) >> 16) as u8 + 1;
+        let entry_count = (((*((madt.address as *mut u8).add(IOREGWIN_OFF as usize) as *mut u32))
+            >> 16)
+            + 1) as u8;
 
-        dprintln!("{}-{entry_count}", madt.gsi_base);
-
-        dprintln!("Initialized I/O APIC at {:#08X}", madt.address);
-
-        if !(*LAPIC_ENABLED.lock()) {
-            if let Some(addr) = *LAPIC_ADDR.lock() {
-                let old = *((addr + 0xF0) as *const u32);
-                *((addr + 0xF0) as *mut u32) = old | 0x100;
-                *LAPIC_ENABLED.lock() = true;
-            } else {
-                return Err("LAPIC address not available");
-            }
-        }
-
-        Ok(IOAPIC {
+        let x = IOAPIC {
             madt,
             version,
             redir_entries: entry_count,
-        })
+        };
+
+        dprintln!("Initialized I/O APIC at {:#08X}", madt.address);
+
+        {
+            let mut lock = LAPIC_ENABLED.lock();
+            if !*lock {
+                if let Some(addr) = *LAPIC_ADDR.lock() {
+                    let old = *((addr + 0xF0) as *const u32);
+                    *((addr + 0xF0) as *mut u32) = old | 0x100;
+                    wrmsr(0x1B, (1 << 8) | (1 << 11) | (addr as u64));
+                    *lock = true;
+                    dprintln!("Initialized LAPIC for I/O APIC");
+                } else {
+                    return Err("LAPIC address not available");
+                }
+            }
+        }
+
+        Ok(x)
     }
 
     pub unsafe fn ioapic_for_gsi(gsi: u32) -> Option<IOAPIC> {
@@ -66,6 +73,17 @@ impl IOAPIC {
             }
         }
         None
+    }
+
+    pub unsafe fn redirect_irq(irq: u8, vec: u32, lapic: u32, mask: bool) -> Result<(), ()> {
+        let gsi = IOAPIC::gsi_for_irq(irq);
+        let flags = IOAPIC::flags_for_irq(irq);
+        if let Some(ioapic) = IOAPIC::ioapic_for_gsi(gsi) {
+            ioapic.redirect_gsi(vec, lapic, gsi, flags, mask);
+            Ok(())
+        } else {
+            Err(())
+        }
     }
 
     pub unsafe fn gsi_for_irq(irq: u8) -> u32 {
@@ -89,7 +107,7 @@ impl IOAPIC {
     }
 
     // flags is from ISO (can be 0!)
-    pub unsafe fn redirect_gsi(&self, vec: u32, lapic: u32, gsi: u32, flags: u16) {
+    pub unsafe fn redirect_gsi(&self, vec: u32, lapic: u32, gsi: u32, flags: u16, mask: bool) {
         if gsi < self.madt.gsi_base || gsi > self.madt.gsi_base + self.redir_entries as u32 {
             dprintln!(
                 "attempt to redirect gsi was made on a ioapic that doesnt handle this gsi ({} -> {} on {}-{} gsi handling ioapic)",
@@ -121,25 +139,32 @@ impl IOAPIC {
         // 0: Edge, 1: Level. For ISA IRQs assume Edge unless otherwise specified in Interrupt Source Override descriptors of the MADT or in the MP Tables
         // 0: Active high, 1: Active low. For ISA IRQs assume Active High unless otherwise specified in Interrupt Source Override descriptors of the MADT or in the MP Tables.. we dont even nede to set them ez
 
-        let mut val: u64 = vec as u64;
-        val |= (((flags & (1 << 1)) >> 1) as u64) << 13;
-        val |= (((flags & (1 << 3)) >> 1) as u64) << 15;
-        val |= (lapic as u64) << 56;
+        let mut val: u64 = vec as u64 | ((lapic as u64) << 56);
+        if (flags & (1 << 1)) > 0 {
+            val |= 1 << 13;
+        }
 
-        dprintln!("GSI: {}, Vector: {}, LAPIC: {}", gsi, vec, lapic);
+        if (flags & (1 << 3)) > 0 {
+            val |= 1 << 15;
+        }
+
+        if mask {
+            val |= 1 << 16;
+        }
+
+        //val |= (((flags & (1 << 1)) >> 1) as u64) << 13;
+        //val |= (((flags & (1 << 3)) >> 3) as u64) << 15;
+        //val |= (lapic as u64) << 56;
+        //val |= (if mask { 1u64 } else { 0u64 }) << 16;
 
         // Following there are two 32-bit register for each IRQ. The first IRQ has indexes 0x10 and 0x11, the second 0x12 and 0x13, the third 0x14 and 0x15, and so on. So the Redirection Entry register for IRQ n is 0x10 + n * 2 (+ 1). In the first of the two registers you access to the LOW uint32_t / bits 31:0, and the second for the high uint32_t / 63:32. Each redirection entry is made of the following fields:
-        dprintln!(
-            "Value: {:#064b}\r\n{:#032b} -> {:#08X}\r\n{:#032b} -> {:#08X}",
-            val,
-            (val & 0xFFFFFFFF),
-            self.madt.address as usize + 0x10 + gsi as usize * 2,
-            (val >> 32) as u32,
-            self.madt.address as usize + 0x10 + gsi as usize * 2 + 1
-        );
-        *((self.madt.address as *mut u8).add(0x10 + gsi as usize * 2) as *mut u32) =
+        *((self.madt.address as *mut u8).add(IOREGSEL_OFF as usize) as *mut u32) =
+            0x10 + (gsi - self.madt.gsi_base) * 2;
+        *((self.madt.address as *mut u8).add(IOREGWIN_OFF as usize) as *mut u32) =
             (val & 0xFFFFFFFF) as u32;
-        *((self.madt.address as *mut u8).add(0x10 + gsi as usize * 2 + 1) as *mut u32) =
+        *((self.madt.address as *mut u8).add(IOREGSEL_OFF as usize) as *mut u32) =
+            0x11 + (gsi - self.madt.gsi_base) * 2;
+        *((self.madt.address as *mut u8).add(IOREGWIN_OFF as usize) as *mut u32) =
             (val >> 32) as u32;
     }
 }

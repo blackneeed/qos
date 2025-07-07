@@ -12,12 +12,14 @@
 
 extern crate alloc;
 
+pub mod arch;
 pub mod boot;
 pub mod drv;
 pub mod mem;
 pub mod tables;
 pub mod util;
 
+use crate::arch::core::Core;
 use crate::boot::multiboot::MultibootInfo;
 use crate::drv::fb::tty::init as tty_init;
 use crate::drv::io::mm::fb::Framebuffer;
@@ -28,6 +30,7 @@ use crate::mem::pmm::get_biggest_usable_pool_multiboot;
 use crate::tables::acpi::acpi_init;
 use crate::tables::idt::initialize_idt;
 use crate::util::panic::infhlt;
+use core::arch::asm;
 use spin::Mutex;
 
 #[derive(Clone, Copy, Debug)]
@@ -68,13 +71,8 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
     initialize_allocator(get_biggest_usable_pool_multiboot().expect("no usable memory pools"));
     tty_init(Framebuffer::from_multiboot().expect("framebuffer not available"));
     acpi_init();
-
-    let gsi = IOAPIC::gsi_for_irq(0);
-    let flags = IOAPIC::flags_for_irq(0);
-    dprintln!("{gsi}");
-    let ioapic = IOAPIC::ioapic_for_gsi(gsi).expect("How do we not have a IOAPIC for that GSI");
-    ioapic.redirect_gsi(40, 0, gsi, flags);
-    // we should have PS/2 keyboard (IRQ 1) at interrupt 40
+    IOAPIC::redirect_irq(1, 33, Core::this().apic_id as u32, false)
+        .expect("Could not redirect IRQ1 to ISR33");
 
     infhlt();
 }
