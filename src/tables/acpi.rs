@@ -1,6 +1,9 @@
+use alloc::vec::Vec;
+use spin::Mutex;
+
 use crate::boot::multiboot::{MultibootInfoTag, get_tag};
 use crate::drv::io::ioport::outb;
-use crate::kprintln;
+use crate::{dprintln, kprintln};
 
 #[repr(C, packed)]
 #[derive(Debug)]
@@ -24,7 +27,6 @@ pub struct XSDP {
     pub length: u32,
     pub xsdt_addr: u64,
     pub checksum2: u8,
-    pub reserved: [u8; 3],
 }
 
 #[repr(C, packed)]
@@ -127,6 +129,35 @@ pub struct GAS {
     pub address: u64,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct MADTIOAPIC {
+    pub id: u8,
+    pub address: u32,
+    pub gsi_base: u32,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct MADTIOAPICISO {
+    pub bus: u8,
+    pub irq: u8,
+    pub gsi: u32,
+    pub flags: u16,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct MADTLAPIC {
+    pub acpi_processor_id: u8,
+    pub apic_id: u8,
+    pub online_capable: bool,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct MADTLAPICNMI {
+    pub acpi_processor_id: u8,
+    pub flags: u16,
+    pub lint1: bool,
+}
+
 impl core::fmt::Debug for GAS {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("GAS")
@@ -221,6 +252,13 @@ pub unsafe fn get_fadt() -> Option<&'static FADT> {
     }
 }
 
+pub static LAPIC_ADDR: Mutex<Option<u32>> = Mutex::new(None);
+pub static PICS_INSTALLED: Mutex<Option<bool>> = Mutex::new(None);
+pub static IOAPICS: Mutex<Vec<MADTIOAPIC>> = Mutex::new(Vec::new());
+pub static IOAPIC_ISOS: Mutex<Vec<MADTIOAPICISO>> = Mutex::new(Vec::new());
+pub static LAPICS: Mutex<Vec<MADTLAPIC>> = Mutex::new(Vec::new());
+pub static LAPIC_NMIS: Mutex<Vec<MADTLAPICNMI>> = Mutex::new(Vec::new());
+
 pub unsafe fn acpi_init() {
     if let Some(fadt) = get_fadt()
         && (fadt.smm_interrupt_command_port != 0 || fadt.acpi_enable != 0)
@@ -231,28 +269,22 @@ pub unsafe fn acpi_init() {
         );
     }
 
-    if let Some(madt) = get_sdt(b"APIC") {
-        kprintln!(
-            "Local APIC address: {:#08X}",
-            core::ptr::read_unaligned(
-                ((&raw const *madt) as *const u8)
-                    .add(core::mem::size_of::<SDT>())
-                    .add(0) as *const u32
-            ),
-        );
+    dprintln!("Initialized FADT");
 
-        kprintln!(
-            "Legacy 8259 PICs{} installed",
-            match ((core::ptr::read_unaligned(
+    if let Some(madt) = get_sdt(b"APIC") {
+        *LAPIC_ADDR.lock() = Some(core::ptr::read_unaligned(
+            ((&raw const *madt) as *const u8)
+                .add(core::mem::size_of::<SDT>())
+                .add(0) as *const u32,
+        ));
+
+        *PICS_INSTALLED.lock() = Some(
+            ((core::ptr::read_unaligned(
                 ((&raw const *madt) as *const u8)
                     .add(core::mem::size_of::<SDT>())
-                    .add(4) as *const u32
+                    .add(4) as *const u32,
             )) & 1)
-                != 0
-            {
-                true => "",
-                false => "not ",
-            }
+                != 0,
         );
 
         let mut address = ((&raw const *madt) as *const u8)
@@ -268,85 +300,64 @@ pub unsafe fn acpi_init() {
 
             match entry_type {
                 0 => {
-                    kprintln!("Processor LAPIC");
-                    kprintln!("\tACPI Processor ID: {}", *entry_address);
-                    kprintln!("\tAPIC ID: {}", *entry_address.add(1));
-                    kprintln!(
-                        "\tprocessor can{} be enabled",
-                        if (((*entry_address.add(2)) & 1) | ((*entry_address.add(2)) & 2)) != 0 {
-                            ""
-                        } else {
-                            "'t"
-                        }
-                    );
+                    LAPICS.lock().push(MADTLAPIC {
+                        acpi_processor_id: *entry_address,
+                        apic_id: *entry_address.add(1),
+                        online_capable: (((*entry_address.add(2)) & 1)
+                            | ((*entry_address.add(2)) & 2))
+                            != 0,
+                    });
                 }
                 1 => {
-                    kprintln!("I/O APIC");
-                    kprintln!("\tID: {}", *entry_address);
-                    kprintln!(
-                        "\tAddress: {}",
-                        core::ptr::read_unaligned(entry_address.add(2) as *const u32)
-                    );
-                    kprintln!(
-                        "\tGSI Base: {}",
-                        core::ptr::read_unaligned(entry_address.add(6) as *const u32)
-                    );
+                    IOAPICS.lock().push(MADTIOAPIC {
+                        id: *entry_address,
+                        address: core::ptr::read_unaligned(entry_address.add(2) as *const u32),
+                        gsi_base: core::ptr::read_unaligned(entry_address.add(6) as *const u32),
+                    });
                 }
                 2 => {
-                    kprintln!("I/O APIC Interrupt Source Override");
-                    kprintln!("\tBus source: {}", *entry_address);
-                    kprintln!("\tIRQ source: {}", *entry_address.add(1));
-                    kprintln!(
-                        "\tGSI: {}",
-                        core::ptr::read_unaligned(entry_address.add(2) as *const u32)
-                    );
-                    kprintln!(
-                        "\tFlags: {}",
-                        core::ptr::read_unaligned(entry_address.add(6) as *const u16)
-                    );
+                    IOAPIC_ISOS.lock().push(MADTIOAPICISO {
+                        bus: *entry_address,
+                        irq: *entry_address.add(1),
+                        gsi: core::ptr::read_unaligned(entry_address.add(2) as *const u32),
+                        flags: core::ptr::read_unaligned(entry_address.add(6) as *const u16),
+                    });
                 }
                 3 => {
-                    kprintln!("I/O APIC Non-maskable interrupt source");
-                    kprintln!("\tNMI Source: {}", *entry_address);
-                    kprintln!(
-                        "\tFlags: {}",
-                        core::ptr::read_unaligned(entry_address.add(2) as *const u16)
-                    );
-                    kprintln!(
-                        "\tGSI: {}",
-                        core::ptr::read_unaligned(entry_address.add(4) as *const u32)
-                    );
+                    //kprintln!("I/O APIC Non-maskable interrupt source");
+                    //kprintln!("\tNMI Source: {}", *entry_address);
+                    //kprintln!(
+                    //    "\tFlags: {}",
+                    //    core::ptr::read_unaligned(entry_address.add(2) as *const u16)
+                    //);
+                    //kprintln!(
+                    //    "\tGSI: {}",
+                    //    core::ptr::read_unaligned(entry_address.add(4) as *const u32)
+                    //);
                 }
                 4 => {
-                    kprintln!("LAPIC Non-maskable interrupts");
-                    kprintln!(
-                        "\tACPI Processor ID: {}{}",
-                        *entry_address,
-                        if *entry_address == 0xFF { " (all)" } else { "" }
-                    );
-                    kprintln!(
-                        "\tFlags: {}",
-                        core::ptr::read_unaligned(entry_address.add(1) as *const u16)
-                    );
-                    kprintln!("\tLINT{}", *entry_address.add(3));
+                    LAPIC_NMIS.lock().push(MADTLAPICNMI {
+                        acpi_processor_id: *entry_address,
+                        flags: core::ptr::read_unaligned(entry_address.add(1) as *const u16),
+                        lint1: *entry_address.add(3) > 0,
+                    });
                 }
                 5 => {
-                    kprintln!(
-                        "{}:{}: found LAPIC address override entry in MADT, skipping!",
-                        file!(),
-                        line!()
-                    )
+                    let addr = core::ptr::read_unaligned(entry_address.add(2) as *const u64);
+                    if addr > u32::MAX as u64 {
+                        dprintln!(
+                            "{}:{}: found LAPIC address override entry in MADT, but LAPIC override addr > 4GB",
+                            file!(),
+                            line!()
+                        );
+                    } else {
+                        *LAPIC_ADDR.lock() = Some(addr as u32);
+                    }
                 }
-                9 => {
-                    kprintln!(
-                        "{}:{}: found x2APIC entry in MADT, skipping!",
-                        file!(),
-                        line!()
-                    );
-                }
+                9 => {}
                 _ => {
-                    kprintln!(
-                        "{}:{}: found unknown entry type {} in MADT, skipping!",
+                    dprintln!(
+                        "{}:{}: found unknown entry type {} in MADT",
                         file!(),
                         line!(),
                         entry_type
@@ -358,4 +369,7 @@ pub unsafe fn acpi_init() {
             length += entry_length as u32;
         }
     }
+
+    dprintln!("Initialized MADT");
+    dprintln!("Initialized ACPI");
 }

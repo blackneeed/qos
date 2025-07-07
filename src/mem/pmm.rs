@@ -1,7 +1,7 @@
 use crate::boot::multiboot::{MultibootMemoryMapEntry, MultibootMemoryMapTag, get_tag};
-use crate::kprintln;
 use crate::util::kernel::{KERNEL_END, KERNEL_START};
 use crate::util::range::{ChopResult, Range};
+use crate::{dprintln, kprintln};
 use core::cmp::min;
 
 pub unsafe fn get_memory_map_tag() -> Option<*const MultibootMemoryMapTag> {
@@ -73,6 +73,11 @@ pub unsafe fn get_biggest_usable_pool_multiboot() -> Option<Range> {
             }
         }
 
+        dprintln!(
+            "Biggest usable memory pool: {:#08X}-{:#08X}",
+            biggest_usable_memory_pool.start,
+            biggest_usable_memory_pool.end
+        );
         Some(biggest_usable_memory_pool)
     } else {
         kprintln!("{}:{}: couldn't find memory map tag", file!(), line!());

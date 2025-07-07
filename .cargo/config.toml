@@ -1,6 +1,10 @@
 [build]
 target = "compiletime/target.json"
 
+[profile.release]
+debug = true
+opt-level = 0
+
 [target.'cfg(all())']
 rustflags = ["-C", "link-arg=-Tcompiletime/linker.ld"]
 

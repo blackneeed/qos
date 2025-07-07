@@ -1,3 +1,4 @@
+use crate::dprintln;
 use crate::drv::fb::flanterm::{FlantermContext, flanterm_fb_init, flanterm_write};
 use crate::drv::io::mm::fb::Framebuffer;
 use core::fmt::{self, Arguments, Write};
@@ -5,13 +6,13 @@ use core::fmt::{self, Arguments, Write};
 use core::ffi::c_void;
 use core::ptr::null;
 
-pub struct FramebufferCLI {
+pub struct TTY {
     ft_ctx: *mut FlantermContext,
 }
 
-impl FramebufferCLI {
-    pub fn new(fb: Framebuffer) -> FramebufferCLI {
-        FramebufferCLI {
+impl TTY {
+    pub fn new(fb: Framebuffer) -> TTY {
+        let inst = TTY {
             ft_ctx: unsafe {
                 flanterm_fb_init(
                     None,
@@ -42,7 +43,10 @@ impl FramebufferCLI {
                     0,
                 )
             },
-        }
+        };
+
+        dprintln!("Initialized TTY");
+        inst
     }
 
     pub fn write_str(&mut self, string: &str) {
@@ -52,32 +56,32 @@ impl FramebufferCLI {
     }
 }
 
-impl Write for FramebufferCLI {
+impl Write for TTY {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.write_str(s);
         Ok(())
     }
 }
 
-pub fn fbcli_print(args: Arguments<'_>) {
-    if let Some(writer) = FBCLI_WRITER.lock().as_mut() {
+pub fn tty_print(args: Arguments<'_>) {
+    if let Some(writer) = TTY_WRITER.lock().as_mut() {
         writer.write_fmt(args).unwrap();
     }
 }
 
-pub fn fbcli_println(args: Arguments<'_>) {
-    fbcli_print(args);
-    fbcli_print(format_args!("\r\n"));
+pub fn tty_println(args: Arguments<'_>) {
+    tty_print(args);
+    tty_print(format_args!("\r\n"));
 }
 
-unsafe impl Send for FramebufferCLI {}
+unsafe impl Send for TTY {}
 
-static FBCLI_WRITER: spin::Mutex<Option<FramebufferCLI>> = spin::Mutex::new(None);
+static TTY_WRITER: spin::Mutex<Option<TTY>> = spin::Mutex::new(None);
 
 pub fn initialized() -> bool {
-    return FBCLI_WRITER.lock().is_some();
+    return TTY_WRITER.lock().is_some();
 }
 
 pub fn init(fb: Framebuffer) {
-    *FBCLI_WRITER.lock() = Some(FramebufferCLI::new(fb));
+    *TTY_WRITER.lock() = Some(TTY::new(fb));
 }

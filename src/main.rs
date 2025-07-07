@@ -12,21 +12,25 @@
 
 extern crate alloc;
 
+pub mod arch;
 pub mod boot;
 pub mod drv;
 pub mod mem;
 pub mod tables;
 pub mod util;
 
+use crate::arch::core::Core;
 use crate::boot::multiboot::MultibootInfo;
-use crate::drv::fb::fbcli::init as fbcli_init;
+use crate::drv::fb::tty::init as tty_init;
 use crate::drv::io::mm::fb::Framebuffer;
+use crate::drv::io::mm::ioapic::IOAPIC;
 use crate::drv::io::pic::mask_all as pic_mask_all;
 use crate::mem::allocator::initialize_allocator;
 use crate::mem::pmm::get_biggest_usable_pool_multiboot;
 use crate::tables::acpi::acpi_init;
 use crate::tables::idt::initialize_idt;
 use crate::util::panic::infhlt;
+use core::arch::asm;
 use spin::Mutex;
 
 #[derive(Clone, Copy, Debug)]
@@ -60,11 +64,15 @@ fn init_multiboot_info(mb2_info: *const MultibootInfo) {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
+    dprintln!("Kernel booted");
     init_multiboot_info(mb2_info);
     pic_mask_all();
     initialize_idt();
     initialize_allocator(get_biggest_usable_pool_multiboot().expect("no usable memory pools"));
-    fbcli_init(Framebuffer::from_multiboot().expect("framebuffer not available"));
+    tty_init(Framebuffer::from_multiboot().expect("framebuffer not available"));
     acpi_init();
+    IOAPIC::redirect_irq(1, 33, Core::this().apic_id as u32, false)
+        .expect("Could not redirect IRQ1 to ISR33");
+
     infhlt();
 }

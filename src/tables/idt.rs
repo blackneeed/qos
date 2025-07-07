@@ -1,5 +1,7 @@
-use crate::kprintln;
+use crate::drv::io::ioport::inb;
+use crate::tables::acpi::LAPIC_ADDR;
 use crate::util::panic::_hcf;
+use crate::{dprintln, kprintln};
 use core::mem::size_of;
 
 #[repr(C, packed)]
@@ -39,10 +41,21 @@ static mut IDT: AlignedIDT = AlignedIDT(
 static mut IDTR: IDT32 = IDT32 { base: 0, limit: 0 };
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn interrupt_handler(interrupt_number: u32, _error_code: u32) {
+pub unsafe extern "C" fn interrupt_handler(interrupt_number: u32, error_code: u32) {
     if interrupt_number < 32 {
-        kprintln!("Exception {:03}, halting", interrupt_number);
+        kprintln!(
+            "Exception {} (error code {}), halting",
+            interrupt_number,
+            error_code
+        );
         _hcf();
+    }
+
+    if interrupt_number == 33 {
+        dprintln!("kb");
+        inb(0x60);
+        *((LAPIC_ADDR.lock().expect("IRQ sent when LAPIC addr == None") + 0xb0) as *mut u32) = 0;
+        return;
     }
 
     kprintln!(
@@ -65,7 +78,9 @@ pub unsafe fn initialize_idt() {
         IDT.0[i].reserved = 0;
     }
 
+    dprintln!("Created IDT");
     load_idt(&raw const IDTR);
+    dprintln!("Loaded IDT");
 }
 
 unsafe extern "C" {
