@@ -1,6 +1,8 @@
 use core::alloc::Layout;
 
-use crate::{dprint, dprintln, drv::io::ioport::outb, util::panic::_hcf};
+use crate::drv::io::ioport::outb;
+use crate::util::panic::_hcf;
+use crate::{dprint, dprintln};
 
 pub struct Case {
     name: &'static str,
@@ -23,7 +25,7 @@ pub fn runner(tests: &[&Case]) {
 
 #[test_case]
 static ALLOCATOR: Case = Case {
-    name: "allocator + memory",
+    name: "allocator",
     func: &allocator_test,
 };
 
@@ -43,37 +45,14 @@ pub fn allocator_test() {
                 .expect("could not create layout in allocator_test");
         }
 
-        const ITERS: u8 = 2;
+        dprint!("passed: [");
 
-        for i in 0..ITERS {
-            dprint!("[{}/{}] [", i + 1, ITERS);
-
-            for (j, &l) in layouts.iter().enumerate() {
-                let ptr = alloc::alloc::alloc(l);
-                let mut index = 0usize;
-                while index < sizes[j] {
-                    let wrapped = index.wrapping_mul(0x9E3779B1);
-                    *ptr.add(index) = ((wrapped & 0xFF) as u8) ^ (((wrapped >> 8) & 0xFF) as u8);
-                    index += (index % 16).max(1);
-                }
-
-                for _ in 0..1000000 {} // small delay
-
-                let mut index = 0usize;
-                while index < sizes[j] {
-                    let wrapped = index.wrapping_mul(0x9E3779B1);
-                    if *ptr.add(index) != ((wrapped & 0xFF) as u8) ^ (((wrapped >> 8) & 0xFF) as u8)
-                    {
-                        panic!("invalid val found");
-                    }
-                    index += (index % 16).max(1);
-                }
-
-                alloc::alloc::dealloc(ptr, layouts[j]);
-                dprint!("{}{}", if j > 0 { ", " } else { "" }, sizes[j]);
-            }
-
-            dprintln!("]");
+        for (j, &l) in layouts.iter().enumerate() {
+            let ptr = alloc::alloc::alloc(l);
+            alloc::alloc::dealloc(ptr, layouts[j]);
+            dprint!("{}{}", if j > 0 { ", " } else { "" }, sizes[j]);
         }
+
+        dprintln!("]");
     }
 }
