@@ -4,3 +4,4 @@ pub mod ioport;
 pub mod mm;
 pub mod pci;
 pub mod pic;
+pub mod ps2;

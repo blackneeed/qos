@@ -30,6 +30,7 @@ use crate::drv::io::mm::lapic::lapic_init;
 use crate::drv::io::mm::ioapic::ioapic_init;
 use crate::drv::io::pci::pci_init;
 use crate::drv::io::pic::mask_all as pic_mask_all;
+use crate::drv::io::ps2::ps2_init;
 use crate::mem::allocator::initialize_allocator;
 use crate::mem::pmm::get_biggest_usable_pool_multiboot;
 use crate::tables::acpi::acpi_init;
@@ -80,6 +81,7 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
     lapic_init();
     pci_init();
     ioapic_init();
+    ps2_init();
     #[cfg(test)]
     test_main();
 
