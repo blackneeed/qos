@@ -42,6 +42,6 @@ macro_rules! dprint {
 
 #[macro_export]
 macro_rules! dprintln {
-    () => ($crate::print!("\r\n"));
+    () => ($crate::dprint!("\r\n"));
     ($($arg:tt)*) => ($crate::util::kprint::dprintln(format_args!($($arg)*)));
 }

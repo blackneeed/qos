@@ -8,6 +8,10 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::identity_op)]
 #![feature(proc_macro_hygiene)]
+#![feature(fn_traits)]
+#![feature(custom_test_frameworks)]
+#![reexport_test_harness_main = "test_main"]
+#![test_runner(crate::util::test::runner)]
 #![feature(ascii_char)]
 
 extern crate alloc;
@@ -21,13 +25,12 @@ pub mod util;
 
 use crate::boot::multiboot::MultibootInfo;
 use crate::drv::fb::tty::init as tty_init;
-use crate::drv::io::ioport::inb;
 use crate::drv::io::mm::fb::Framebuffer;
 use crate::drv::io::pic::mask_all as pic_mask_all;
 use crate::mem::allocator::initialize_allocator;
 use crate::mem::pmm::get_biggest_usable_pool_multiboot;
 use crate::tables::acpi::acpi_init;
-use crate::tables::idt::{initialize_idt, load_idt, register_irq};
+use crate::tables::idt::{initialize_idt, load_idt};
 use crate::util::panic::infhlt;
 use spin::Mutex;
 
@@ -70,13 +73,9 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
     initialize_allocator(get_biggest_usable_pool_multiboot().expect("no usable memory pools"));
     tty_init(Framebuffer::from_multiboot().expect("framebuffer not available"));
     acpi_init();
-    register_irq(0, || {
-        kprintln!("PIT!@!@!@");
-    });
-    register_irq(1, || {
-        kprintln!("Keyboard!@!@!@");
-        inb(0x60);
-    });
+
+    #[cfg(test)]
+    test_main();
 
     infhlt();
 }
