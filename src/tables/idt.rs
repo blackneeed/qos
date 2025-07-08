@@ -42,7 +42,7 @@ static mut IDT: AlignedIDT = AlignedIDT(
     }; 256],
 );
 
-type IRQHashMap = HashMap<u8, fn()>; // clippy keeps complaining about some complex type bullshit
+type IRQHashMap = HashMap<u8, unsafe fn()>; // clippy keeps complaining about some complex type bullshit
 
 static IDTR: Mutex<Option<IDT32>> = Mutex::new(None);
 static IRQS: Mutex<Option<IRQHashMap>> = Mutex::new(None);
@@ -101,7 +101,7 @@ pub unsafe fn load_idt() {
     dprintln!("Loaded IDT");
 }
 
-pub unsafe fn register_irq(irq: u8, func: fn()) {
+pub unsafe fn register_irq(irq: u8, func: unsafe fn()) {
     let mut lock = IRQS.lock();
     let val = lock.as_mut().unwrap();
     val.insert(irq, func);

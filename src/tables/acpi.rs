@@ -129,6 +129,16 @@ pub struct GAS {
     pub address: u64,
 }
 
+#[derive(Debug)]
+#[repr(C, packed)]
+pub struct HPET {
+    pub event_timer_block_id: u32,
+    pub base_address: GAS,
+    pub id: u8,
+    pub minimum_clk_tick: u16,
+    pub page_protect: u8,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct MADTIOAPIC {
     pub id: u8,
@@ -247,6 +257,14 @@ pub unsafe fn get_sdt(signature: &[u8; 4]) -> Option<&'static SDT> {
 pub unsafe fn get_fadt() -> Option<&'static FADT> {
     if let Some(sdt) = get_sdt(b"FACP") {
         Some(&*(((&raw const *sdt) as *const u8).add(core::mem::size_of::<SDT>()) as *const FADT))
+    } else {
+        None
+    }
+}
+
+pub unsafe fn get_hpet() -> Option<&'static HPET> {
+    if let Some(sdt) = get_sdt(b"HPET") {
+        Some(&*(((&raw const *sdt) as *const u8).add(core::mem::size_of::<SDT>()) as *const HPET))
     } else {
         None
     }

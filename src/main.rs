@@ -23,6 +23,8 @@ pub mod mem;
 pub mod tables;
 pub mod util;
 
+use core::time::Duration;
+
 use crate::boot::multiboot::MultibootInfo;
 use crate::drv::fb::tty::init as tty_init;
 use crate::drv::io::mm::fb::Framebuffer;
@@ -32,6 +34,7 @@ use crate::mem::pmm::get_biggest_usable_pool_multiboot;
 use crate::tables::acpi::acpi_init;
 use crate::tables::idt::{initialize_idt, load_idt};
 use crate::util::panic::infhlt;
+use crate::util::sleep::{sleep, sleep_init};
 use spin::Mutex;
 
 #[derive(Clone, Copy, Debug)]
@@ -73,6 +76,12 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
     initialize_allocator(get_biggest_usable_pool_multiboot().expect("no usable memory pools"));
     tty_init(Framebuffer::from_multiboot().expect("framebuffer not available"));
     acpi_init();
+    sleep_init();
+    loop {
+        kprintln!("Waiting 1 second...");
+        sleep(Duration::from_secs(1));
+        kprintln!("Done!");
+    }
 
     #[cfg(test)]
     test_main();
