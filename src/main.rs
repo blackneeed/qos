@@ -26,6 +26,7 @@ pub mod util;
 use crate::boot::multiboot::MultibootInfo;
 use crate::drv::fb::tty::init as tty_init;
 use crate::drv::io::mm::fb::Framebuffer;
+use crate::drv::io::mm::lapic::lapic_init;
 use crate::drv::io::pic::mask_all as pic_mask_all;
 use crate::mem::allocator::initialize_allocator;
 use crate::mem::pmm::get_biggest_usable_pool_multiboot;
@@ -74,7 +75,7 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
     tty_init(Framebuffer::from_multiboot().expect("framebuffer not available"));
     acpi_init();
     sleep_init();
-
+    lapic_init();
     #[cfg(test)]
     test_main();
 

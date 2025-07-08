@@ -1,6 +1,5 @@
-use crate::arch::msr::wrmsr;
 use crate::dprintln;
-use crate::tables::acpi::{IOAPIC_ISOS, IOAPICS, LAPIC_ADDR, MADTIOAPIC};
+use crate::tables::acpi::{IOAPIC_ISOS, IOAPICS, MADTIOAPIC};
 use alloc::boxed::Box;
 use hashbrown::HashMap;
 use spin::Mutex;
@@ -17,7 +16,6 @@ pub struct IOAPIC {
     pub redir_entries: u8,
 }
 
-static LAPIC_ENABLED: Mutex<bool> = Mutex::new(false);
 static IOAPIC_CACHE: Mutex<Option<HashMap<u8, &IOAPIC>>> = Mutex::new(None);
 
 impl IOAPIC {
@@ -25,7 +23,6 @@ impl IOAPIC {
         if let Some(cache) = &*IOAPIC_CACHE.lock()
             && let Some(&ioapic) = cache.get(&madt.id)
         {
-            dprintln!("Found I/O APIC in cache.");
             return Ok(ioapic.clone());
         }
 
@@ -73,23 +70,6 @@ impl IOAPIC {
         };
 
         dprintln!("Initialized I/O APIC at {:#08X}", madt.address);
-
-        {
-            let mut lock = LAPIC_ENABLED.lock();
-            if !*lock {
-                if let Some(addr) = *LAPIC_ADDR.lock() {
-                    core::ptr::write_volatile(
-                        (addr + 0xF0) as *mut u32,
-                        core::ptr::read_volatile((addr + 0xF0) as *const u32) | 0x100,
-                    );
-                    wrmsr(0x1B, (1 << 8) | (1 << 11) | (addr as u64));
-                    *lock = true;
-                    dprintln!("Initialized LAPIC for I/O APIC");
-                } else {
-                    return Err("LAPIC address not available");
-                }
-            }
-        }
 
         let mut lock = IOAPIC_CACHE.lock();
 

@@ -48,12 +48,37 @@ static IDTR: Mutex<Option<IDT32>> = Mutex::new(None);
 static IRQS: Mutex<Option<IRQHashMap>> = Mutex::new(None);
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn interrupt_handler(interrupt_number: u32, error_code: u32) {
+pub unsafe extern "C" fn interrupt_handler(interrupt_number: u32, _error_code: u32) {
     if interrupt_number < 32 {
         kprintln!(
-            "Exception {} (error code {}), halting",
-            interrupt_number,
-            error_code
+            "{}",
+            match interrupt_number {
+                0 => "(#DE) Division Error",
+                1 => "(#DB) Debug",
+                2 => "(#--) Non-maskable Interrupt",
+                3 => "(#BP) Breakpoint",
+                4 => "(#OF) Overflow",
+                5 => "(#BR) Bound Range Exceeded",
+                6 => "(#UD) Invalid Opcode",
+                7 => "(#NM) Device Not Available",
+                8 => "(#DF) Double Fault",
+                9 => "(#--) Coprocessor Segment Overrun",
+                10 => "(#TS) Invalid TSS",
+                11 => "(#NP) Segment Not Present",
+                12 => "(#SS) Stack Segment Fault",
+                13 => "(#GP) General Protection Fault",
+                14 => "(#PF) Page Fault",
+                16 => "(#MF) x87 Floating-Point Exception",
+                17 => "(#AC) Alignment Check",
+                18 => "(#MC) Machine Check",
+                19 => "(#XM) SIMD Floating-Point Exception",
+                20 => "(#VE) Virtualization Exception",
+                21 => "(#CP) Control Protection Exception",
+                28 => "(#HV) Hypervisor Injection Exception",
+                29 => "(#VC) VMM Communication Exception",
+                30 => "(#SX) Security Exception",
+                _ => "",
+            },
         );
         _hcf();
     }
@@ -87,7 +112,7 @@ pub unsafe fn initialize_idt() {
         IDT.0[i].reserved = 0;
     }
 
-    dprintln!("Created IDT");
+    dprintln!("Initialized IDT");
 }
 
 pub unsafe fn load_idt() {
@@ -98,7 +123,6 @@ pub unsafe fn load_idt() {
         .clone();
 
     _lidt(&raw const idtr);
-    dprintln!("Loaded IDT");
 }
 
 pub unsafe fn register_irq(irq: u8, func: unsafe fn()) {

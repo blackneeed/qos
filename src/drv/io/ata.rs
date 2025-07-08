@@ -1,5 +1,4 @@
 use crate::drv::io::ioport::{inb, inw, outb};
-use fatfs::{IoBase, Read, Seek, SeekFrom, Write};
 
 pub struct ATADrive {
     io: u16,
@@ -7,7 +6,6 @@ pub struct ATADrive {
     ctrl: u16,
     slave: bool,
     max_lba: u64,
-    position: u64, // for write and read and seek traits
 }
 
 impl ATADrive {
@@ -64,7 +62,6 @@ impl ATADrive {
                 ctrl,
                 slave,
                 max_lba,
-                position: 0,
             })
         }
     }
@@ -105,7 +102,7 @@ impl ATADrive {
         true
     }
 
-    fn write_lba(&self, lba: u64, data: &[u8]) -> bool {
+    pub fn write_lba(&self, lba: u64, data: &[u8]) -> bool {
         if data.len() < 512 || lba >= self.max_lba {
             return false;
         }
@@ -138,92 +135,5 @@ impl ATADrive {
 
     pub fn get_max_lba(&self) -> u64 {
         self.max_lba
-    }
-}
-
-impl IoBase for ATADrive {
-    type Error = ();
-}
-
-impl Read for ATADrive {
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
-        let mut total_read = 0;
-        let mut remaining = buf;
-
-        while !remaining.is_empty() {
-            let lba = self.position / 512;
-            let sector_offset = (self.position % 512) as usize;
-
-            if lba >= self.max_lba {
-                break;
-            }
-
-            let mut sector = [0u8; 512];
-            if !self.read_lba(lba, &mut sector) {
-                break;
-            }
-
-            let copy_len = (512 - sector_offset).min(remaining.len());
-            remaining[..copy_len].copy_from_slice(&sector[sector_offset..sector_offset + copy_len]);
-
-            self.position += copy_len as u64;
-            total_read += copy_len;
-            remaining = &mut remaining[copy_len..];
-        }
-
-        Ok(total_read)
-    }
-}
-
-impl Write for ATADrive {
-    fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
-        let mut total_written = 0;
-        let mut remaining = buf;
-
-        while !remaining.is_empty() {
-            let lba = self.position / 512;
-            let sector_offset = (self.position % 512) as usize;
-
-            if lba >= self.max_lba {
-                break;
-            }
-
-            let mut sector = [0u8; 512];
-            if sector_offset != 0 || remaining.len() < 512 && !self.read_lba(lba, &mut sector) {
-                break;
-            }
-
-            let copy_len = (512 - sector_offset).min(remaining.len());
-            sector[sector_offset..sector_offset + copy_len].copy_from_slice(&remaining[..copy_len]);
-
-            if !self.write_lba(lba, &sector) {
-                break;
-            }
-
-            self.position += copy_len as u64;
-            total_written += copy_len;
-            remaining = &remaining[copy_len..];
-        }
-
-        Ok(total_written)
-    }
-
-    fn flush(&mut self) -> Result<(), Self::Error> {
-        Ok(())
-    }
-}
-
-impl Seek for ATADrive {
-    fn seek(&mut self, pos: SeekFrom) -> Result<u64, Self::Error> {
-        self.position = match pos {
-            SeekFrom::Start(offset) => offset,
-            SeekFrom::Current(offset) => (self.position as i64 + offset).max(0) as u64,
-            SeekFrom::End(offset) => {
-                let size = self.max_lba * 512;
-                (size as i64 + offset).max(0) as u64
-            }
-        };
-
-        Ok(self.position)
     }
 }

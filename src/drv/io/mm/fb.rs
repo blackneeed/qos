@@ -1,6 +1,6 @@
 use crate::boot::multiboot::{MultibootFramebufferTag, get_tag};
+use crate::kprintln;
 use crate::mem::pmm::memset32;
-use crate::{dprintln, kprintln};
 
 use alloc::alloc::alloc;
 use core::alloc::Layout;
@@ -58,7 +58,6 @@ impl Framebuffer {
 
             core::ptr::write_bytes(double_fb, 0, height as usize * pitch as usize);
 
-            dprintln!("Initialized framebuffer");
             Some(Framebuffer {
                 width,
                 height,
