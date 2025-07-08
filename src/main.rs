@@ -24,14 +24,15 @@ pub mod tables;
 pub mod util;
 
 use crate::boot::multiboot::MultibootInfo;
-use crate::drv::fb::tty::init as tty_init;
+use crate::drv::fb::tty::tty_init;
 use crate::drv::io::mm::fb::Framebuffer;
 use crate::drv::io::mm::lapic::lapic_init;
+use crate::drv::io::pci::pci_init;
 use crate::drv::io::pic::mask_all as pic_mask_all;
 use crate::mem::allocator::initialize_allocator;
 use crate::mem::pmm::get_biggest_usable_pool_multiboot;
 use crate::tables::acpi::acpi_init;
-use crate::tables::idt::{initialize_idt, load_idt};
+use crate::tables::idt::{initialize_idt, load_idt, register_irq};
 use crate::util::panic::infhlt;
 use crate::util::sleep::sleep_init;
 use spin::Mutex;
@@ -76,8 +77,11 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
     acpi_init();
     sleep_init();
     lapic_init();
+    pci_init();
     #[cfg(test)]
     test_main();
+
+    register_irq(1, || {});
 
     infhlt();
 }

@@ -1,8 +1,7 @@
-use core::alloc::Layout;
-
 use crate::drv::io::ioport::outb;
 use crate::util::panic::_hcf;
 use crate::{dprint, dprintln};
+use core::alloc::Layout;
 
 pub struct Case {
     name: &'static str,
@@ -49,6 +48,9 @@ pub fn allocator_test() {
 
         for (j, &l) in layouts.iter().enumerate() {
             let ptr = alloc::alloc::alloc(l);
+            if ptr.is_null() {
+                panic!("failed at {}", sizes[j]);
+            }
             alloc::alloc::dealloc(ptr, layouts[j]);
             dprint!("{}{}", if j > 0 { ", " } else { "" }, sizes[j]);
         }

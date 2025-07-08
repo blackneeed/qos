@@ -82,6 +82,6 @@ pub fn initialized() -> bool {
     return TTY_WRITER.lock().is_some();
 }
 
-pub fn init(fb: Framebuffer) {
+pub fn tty_init(fb: Framebuffer) {
     *TTY_WRITER.lock() = Some(TTY::new(fb));
 }

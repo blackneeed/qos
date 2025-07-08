@@ -61,15 +61,13 @@ impl IOAPIC {
             & 0xFF)
             + 1) as u8;
 
-        dprintln!("{}", entry_count);
-
         let x = IOAPIC {
             madt,
             version,
             redir_entries: entry_count,
         };
 
-        dprintln!("Initialized I/O APIC at {:#08X}", madt.address);
+        dprintln!("Initialized I/O APIC #{}", madt.id);
 
         let mut lock = IOAPIC_CACHE.lock();
 
