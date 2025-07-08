@@ -5,7 +5,7 @@ use crate::arch::core::Core;
 use crate::drv::io::mm::ioapic::IOAPIC;
 use crate::tables::acpi::LAPIC_ADDR;
 use crate::util::panic::_hcf;
-use crate::{dprintln, kprintln};
+use crate::{initialized, kprintln};
 use core::mem::size_of;
 
 #[repr(C, packed)]
@@ -112,7 +112,7 @@ pub unsafe fn initialize_idt() {
         IDT.0[i].reserved = 0;
     }
 
-    dprintln!("Initialized IDT");
+    initialized!("IDT");
 }
 
 pub unsafe fn load_idt() {

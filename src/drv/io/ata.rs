@@ -1,4 +1,4 @@
-use crate::drv::io::ioport::{inb, inw, outb};
+use crate::{drv::io::ioport::{inb, inw, outb}, initialized};
 
 pub struct ATADrive {
     io: u16,
@@ -56,6 +56,8 @@ impl ATADrive {
             }
 
             let max_lba = ((buf[61] as u32) << 16 | buf[60] as u32) as u64;
+
+            initialized!("ATA{}", drive_id);
 
             Some(ATADrive {
                 io,

@@ -1,4 +1,4 @@
-use crate::dprintln;
+use crate::initialized;
 use crate::tables::acpi::get_hpet;
 use core::arch::asm;
 use core::time::Duration;
@@ -36,7 +36,7 @@ impl HPET {
         core::ptr::write_volatile((address as *mut u8).add(0xF0) as *mut u64, 0); // clear counter
         core::ptr::write_volatile((address as *mut u8).add(0x10) as *mut u64, 1); // enable
 
-        dprintln!("Initialized HPET");
+        initialized!("HPET");
         HPET {
             address,
             counter_clock_period,

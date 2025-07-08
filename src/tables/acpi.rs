@@ -3,7 +3,7 @@ use spin::Mutex;
 
 use crate::boot::multiboot::{MultibootInfoTag, get_tag};
 use crate::drv::io::ioport::outb;
-use crate::{dprintln, kprintln};
+use crate::{initialized, kprintln, dprintln};
 
 #[repr(C, packed)]
 #[derive(Debug)]
@@ -287,7 +287,7 @@ pub unsafe fn acpi_init() {
         );
     }
 
-    dprintln!("Initialized FADT");
+    initialized!("FADT");
 
     if let Some(madt) = get_sdt(b"APIC") {
         *LAPIC_ADDR.lock() = Some(core::ptr::read_unaligned(
@@ -388,6 +388,6 @@ pub unsafe fn acpi_init() {
         }
     }
 
-    dprintln!("Initialized MADT");
-    dprintln!("Initialized ACPI");
+    initialized!("MADT");
+    initialized!("ACPI");
 }

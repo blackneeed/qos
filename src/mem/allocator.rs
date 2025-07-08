@@ -1,4 +1,4 @@
-use crate::dprintln;
+use crate::initialized;
 use crate::util::range::Range;
 use linked_list_allocator::LockedHeap;
 
@@ -10,5 +10,5 @@ pub unsafe fn initialize_allocator(pool: Range) {
         pool.start as *mut u8,
         pool.end as usize - pool.start as usize,
     );
-    dprintln!("Initialized MM");
+    initialized!("MM");
 }

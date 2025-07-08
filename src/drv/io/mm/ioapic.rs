@@ -1,4 +1,4 @@
-use crate::dprintln;
+use crate::initialized;
 use crate::tables::acpi::{IOAPIC_ISOS, IOAPICS, MADTIOAPIC};
 use alloc::boxed::Box;
 use hashbrown::HashMap;
@@ -67,7 +67,7 @@ impl IOAPIC {
             redir_entries: entry_count,
         };
 
-        dprintln!("Initialized I/O APIC #{}", madt.id);
+        initialized!("IOAPIC{}", madt.id);
 
         let mut lock = IOAPIC_CACHE.lock();
 
@@ -129,14 +129,13 @@ impl IOAPIC {
     // flags is from ISO (can be 0!)
     pub unsafe fn redirect_gsi(&self, vec: u32, lapic: u32, gsi: u32, flags: u16, mask: bool) {
         if gsi < self.madt.gsi_base || gsi > self.madt.gsi_base + self.redir_entries as u32 {
-            dprintln!(
+            panic!(
                 "attempt to redirect gsi was made on a ioapic that doesnt handle this gsi ({} -> {} on {}-{} gsi handling ioapic)",
                 gsi,
                 vec,
                 self.madt.gsi_base,
                 self.madt.gsi_base + self.redir_entries as u32
             );
-            return;
         }
 
         /*
@@ -186,5 +185,11 @@ impl IOAPIC {
             0x11 + (gsi - self.madt.gsi_base) * 2;
         *((self.madt.address as *mut u8).add(IOREGWIN_OFF as usize) as *mut u32) =
             (val >> 32) as u32;
+    }
+}
+
+pub unsafe fn ioapic_init() {
+    for ioapic in &*IOAPICS.lock() {
+        let _ = IOAPIC::new(ioapic.clone());
     }
 }

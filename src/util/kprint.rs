@@ -24,6 +24,11 @@ pub fn dprintln(args: Arguments<'_>) {
     e9_println(args);
 }
 
+pub fn initialized(args: Arguments<'_>) {
+    dprint(format_args!("Initialized "));
+    dprintln(args);
+}
+
 #[macro_export]
 macro_rules! kprint {
     ($($arg:tt)*) => ($crate::util::kprint::kprint(format_args!($($arg)*)));
@@ -44,4 +49,9 @@ macro_rules! dprint {
 macro_rules! dprintln {
     () => ($crate::dprint!("\r\n"));
     ($($arg:tt)*) => ($crate::util::kprint::dprintln(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! initialized {
+    ($($arg:tt)*) => ($crate::util::kprint::initialized(format_args!($($arg)*)))
 }

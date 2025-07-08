@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 use spin::Mutex;
 
-use crate::dprintln;
+use crate::initialized;
 use crate::drv::io::ioport::{inl, outl};
 
 const CONFIG_ADDRESS: u16 = 0xCF8;
@@ -85,5 +85,5 @@ pub unsafe fn pci_init() {
         }
     }
 
-    dprintln!("Initialized PCI");
+    initialized!("PCI");
 }

@@ -1,5 +1,5 @@
 use crate::arch::msr::wrmsr;
-use crate::dprintln;
+use crate::initialized;
 use crate::tables::acpi::LAPIC_ADDR;
 
 pub unsafe fn lapic_init() {
@@ -14,5 +14,5 @@ pub unsafe fn lapic_init() {
 
     wrmsr(0x1B, (1 << 8) | (1 << 11) | (addr as u64));
 
-    dprintln!("Initialized LAPIC");
+    initialized!("LAPIC");
 }
