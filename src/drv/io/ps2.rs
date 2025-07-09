@@ -140,14 +140,6 @@ fn send_port1(byte: u8) -> Result<(), ()> {
             continue;
         }
 
-        if send_command(PS2_COMMAND_PORT2_REDIR).is_err() {
-            continue;
-        }
-
-        if wait_input_buffer_clear().is_err() {
-            continue;
-        }
-
         if byte == PS2_DEVICE_COMMAND_ENABLE_SCANNING {
             *IGNORE_IRQ.lock() = true;
         }
@@ -350,7 +342,6 @@ pub unsafe fn ps2_init() {
             }
 
             if let Ok(dev) = get_type(send_port1) {
-                dprintln!("{:?}", dev);
                 *TYPE1.lock() = Some(dev);
                 register_irq(1, || unsafe {
                     ps2_port1_irq();
@@ -377,7 +368,6 @@ pub unsafe fn ps2_init() {
             }
 
             if let Ok(dev) = get_type(send_port2) {
-                dprintln!("{:?}", dev);
                 *TYPE2.lock() = Some(dev);
                 register_irq(12, || unsafe {
                     ps2_port2_irq();
