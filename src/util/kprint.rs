@@ -29,6 +29,11 @@ pub fn initialized(args: Arguments<'_>) {
     dprintln(args);
 }
 
+pub fn initialization_fail(args: Arguments<'_>) {
+    dprint(format_args!("Failed to initialize "));
+    dprintln(args);
+}
+
 #[macro_export]
 macro_rules! kprint {
     ($($arg:tt)*) => ($crate::util::kprint::kprint(format_args!($($arg)*)));
@@ -53,5 +58,10 @@ macro_rules! dprintln {
 
 #[macro_export]
 macro_rules! initialized {
-    ($($arg:tt)*) => ($crate::util::kprint::initialized(format_args!($($arg)*)))
+    ($($arg:tt)*) => ($crate::util::kprint::initialized(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! initialization_fail {
+    ($($arg:tt)*) => ($crate::util::kprint::initialization_fail(format_args!($($arg)*)));
 }
