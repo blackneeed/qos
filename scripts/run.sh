@@ -15,6 +15,10 @@ if [ "$NET" == "true" ]; then
   FLAGS="${FLAGS} -netdev tap,id=net0,ifname=tap0,script=no,downscript=no -device rtl8139,netdev=net0" # you need tap0 set up
 fi
 
+if [ "$KVM" == "true" ]; then
+  FLAGS="${FLAGS} -accel kvm -cpu host"
+fi
+
 mkdir -p build/boot/grub
 cp compiletime/grub.cfg build/boot/grub/grub.cfg
 cp $1 build/boot/qos.elf

@@ -39,9 +39,10 @@ unsafe fn pci_config_read_dword(bus: u8, slot: u8, func: u8, off: u8) -> u32 {
 
 pub unsafe fn pci_init() {
     let mut lock = PCI_DEVICES.lock();
+
     for bus in 0..=255 {
         for slot in 0..32 {
-            for func in 0..8 {
+            for func in 0..=7 {
                 let dword0 = pci_config_read_dword(bus, slot, func, 0x0);
                 let vendor = (dword0 & 0xFFFF) as u16;
                 let device = ((dword0 >> 16) & 0xFFFF) as u16;

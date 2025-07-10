@@ -1,9 +1,10 @@
 use crate::drv::io::ioport::{inb, outb};
+use crate::drv::io::ps2kb::ps2_keyboard_irq;
 use crate::tables::idt::register_irq;
-use crate::{dprintln, initialization_fail, initialized};
+use crate::{initialization_fail, initialized};
 use spin::Mutex;
 
-const PS2_DATA_PORT: u16 = 0x60;
+pub const PS2_DATA_PORT: u16 = 0x60;
 const PS2_STATUS_PORT: u16 = 0x64;
 const PS2_TIMEOUT: u32 = 100000;
 const PS2_RETRY_COUNT: u32 = 3;
@@ -23,7 +24,7 @@ const PS2_TEST_PORT1_SUCCESS: u8 = 0x00;
 
 static IGNORE_IRQ: Mutex<bool> = Mutex::new(false);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PS2Device {
     KeyboardAT,
     Mouse,
@@ -52,8 +53,20 @@ unsafe fn ps2_port1_irq() {
     }
 
     assert!(TYPE.lock().is_some());
-    dprintln!("PS2Device::{:?} IRQ", TYPE.lock().clone().unwrap());
-    inb(PS2_DATA_PORT);
+    if [
+        PS2Device::KeyboardAT,
+        PS2Device::KeyboardMF2,
+        PS2Device::KeyboardShort,
+        PS2Device::Keyboard122KeyHostConnected,
+        PS2Device::Keyboard122Key,
+        PS2Device::KeyboardNCDSun,
+    ]
+    .contains(&TYPE.lock().clone().unwrap())
+    {
+        ps2_keyboard_irq();
+    } else {
+        inb(PS2_DATA_PORT);
+    }
 }
 
 fn input_buf_clear() -> bool {
@@ -130,14 +143,14 @@ fn send_port1(byte: u8) -> Result<(), ()> {
             outb(PS2_DATA_PORT, byte);
         }
 
-        if wait_output_buffer_full().is_err() {
-            continue;
+        if byte != PS2_DEVICE_COMMAND_ENABLE_SCANNING {
+            if wait_output_buffer_full().is_err() {
+                continue;
+            }
+            if unsafe { inb(PS2_DATA_PORT) } != 0xFA {
+                continue;
+            }
         }
-
-        if unsafe { inb(PS2_DATA_PORT) } != 0xFA {
-            continue;
-        }
-
         return Ok(());
     }
 
