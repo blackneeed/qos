@@ -1,4 +1,12 @@
-use crate::{drv::io::ioport::{inb, inw, outb}, initialized};
+use alloc::boxed::Box;
+
+use crate::{
+    drv::io::{
+        disk::{Disk, DiskSeek, register_disk},
+        ioport::{inb, inw, outb},
+    },
+    initialized,
+};
 
 pub struct ATADrive {
     io: u16,
@@ -6,6 +14,7 @@ pub struct ATADrive {
     ctrl: u16,
     slave: bool,
     max_lba: u64,
+    position: u64,
 }
 
 impl ATADrive {
@@ -64,6 +73,7 @@ impl ATADrive {
                 ctrl,
                 slave,
                 max_lba,
+                position: 0,
             })
         }
     }
@@ -137,5 +147,62 @@ impl ATADrive {
 
     pub fn get_max_lba(&self) -> u64 {
         self.max_lba
+    }
+}
+
+impl Disk for ATADrive {
+    fn write(&mut self, data: &[u8; 512]) -> u64 {
+        if self.write_lba(self.position, data) {
+            512
+        } else {
+            0
+        }
+    }
+
+    fn read(&mut self, buf: &mut [u8; 512]) -> u64 {
+        if self.read_lba(self.position, buf) {
+            512
+        } else {
+            0
+        }
+    }
+
+    fn seek(&mut self, seek: DiskSeek) -> Result<u64, ()> {
+        match seek {
+            DiskSeek::Start(off) => {
+                if off < self.max_lba {
+                    self.position = off;
+                    Ok(self.position)
+                } else {
+                    Err(())
+                }
+            }
+
+            DiskSeek::Current(off) => {
+                if self.position + off < self.max_lba {
+                    self.position += off;
+                    Ok(self.position)
+                } else {
+                    Err(())
+                }
+            }
+
+            DiskSeek::End(off) => {
+                if off < self.max_lba {
+                    self.position = self.max_lba - off;
+                    Ok(self.position)
+                } else {
+                    Err(())
+                }
+            }
+        }
+    }
+}
+
+pub fn ata_init() {
+    for i in 0..3 {
+        if let Some(disk) = ATADrive::new(i) {
+            register_disk(Box::new(disk));
+        }
     }
 }

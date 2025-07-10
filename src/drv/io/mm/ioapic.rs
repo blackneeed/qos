@@ -189,7 +189,7 @@ impl IOAPIC {
 }
 
 pub unsafe fn ioapic_init() {
-    for ioapic in &*IOAPICS.lock() {
-        let _ = IOAPIC::new(ioapic.clone());
+    for &ioapic in &*IOAPICS.lock() {
+        let _ = IOAPIC::new(ioapic);
     }
 }

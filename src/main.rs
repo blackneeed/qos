@@ -25,11 +25,13 @@ pub mod util;
 
 use crate::boot::multiboot::MultibootInfo;
 use crate::drv::fb::tty::tty_init;
+use crate::drv::io::ata::ata_init;
 use crate::drv::io::mm::fb::Framebuffer;
-use crate::drv::io::mm::lapic::lapic_init;
 use crate::drv::io::mm::ioapic::ioapic_init;
-use crate::drv::io::pci::pci_init;
+use crate::drv::io::mm::lapic::lapic_init;
+use crate::drv::io::pci::{PCI_DEVICES, pci_init};
 use crate::drv::io::pic::mask_all as pic_mask_all;
+use crate::drv::io::ps2::ps2_init;
 use crate::mem::allocator::initialize_allocator;
 use crate::mem::pmm::get_biggest_usable_pool_multiboot;
 use crate::tables::acpi::acpi_init;
@@ -80,8 +82,20 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
     lapic_init();
     pci_init();
     ioapic_init();
+    ps2_init();
+    ata_init();
     #[cfg(test)]
     test_main();
+
+    for device in PCI_DEVICES.lock().iter() {
+        kprintln!(
+            "Vendor ID: {:#x}, Device ID: {:#x}, Class: {:#x}, Subclass: {:#x}",
+            device.vendor,
+            device.device,
+            device.class,
+            device.subclass
+        );
+    }
 
     infhlt();
 }
