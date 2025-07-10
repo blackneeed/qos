@@ -9,22 +9,19 @@ const PS2_TIMEOUT: u32 = 100000;
 const PS2_RETRY_COUNT: u32 = 3;
 const PS2_COMMAND_PORT: u16 = 0x64;
 const PS2_COMMAND_DISABLE_PORT1: u8 = 0xAD;
-const PS2_COMMAND_DISABLE_PORT2: u8 = 0xA7;
 const PS2_COMMAND_ENABLE_PORT1: u8 = 0xAE;
-const PS2_COMMAND_ENABLE_PORT2: u8 = 0xA8;
 const PS2_COMMAND_READ_CONFIG: u8 = 0x20;
 const PS2_COMMAND_WRITE_CONFIG: u8 = 0x60;
-const PS2_COMMAND_PORT2_REDIR: u8 = 0xD4;
 const PS2_COMMAND_TEST: u8 = 0xAA;
 const PS2_COMMAND_TEST_PORT1: u8 = 0xAB;
-const PS2_COMMAND_TEST_PORT2: u8 = 0xA9;
 const PS2_DEVICE_COMMAND_RESET: u8 = 0xFF;
 const PS2_DEVICE_COMMAND_DISABLE_SCANNING: u8 = 0xF5;
 const PS2_DEVICE_COMMAND_ENABLE_SCANNING: u8 = 0xF4;
 const PS2_DEVICE_COMMAND_IDENTIFY: u8 = 0xF2;
 const PS2_TEST_SUCCESS: u8 = 0x55;
 const PS2_TEST_PORT1_SUCCESS: u8 = 0x00;
-const PS2_TEST_PORT2_SUCCESS: u8 = 0x00;
+
+static IGNORE_IRQ: Mutex<bool> = Mutex::new(false);
 
 #[derive(Debug, Clone)]
 pub enum PS2Device {
@@ -44,34 +41,19 @@ pub enum PS2Device {
 }
 
 pub type PS2DeviceSend = fn(u8) -> Result<(), ()>;
-static TYPE1: Mutex<Option<PS2Device>> = Mutex::new(None);
-static TYPE2: Mutex<Option<PS2Device>> = Mutex::new(None);
-static IGNORE_IRQ: Mutex<bool> = Mutex::new(false);
+static TYPE: Mutex<Option<PS2Device>> = Mutex::new(None);
 
 unsafe fn ps2_port1_irq() {
     let mut lock = IGNORE_IRQ.lock();
     if *lock {
-        flush();
+        inb(PS2_DATA_PORT);
         *lock = false;
         return;
     }
 
-    assert!(TYPE1.lock().is_some());
-    dprintln!("PS2Device::{:?} IRQ", TYPE1.lock().clone().unwrap());
-    flush();
-}
-
-unsafe fn ps2_port2_irq() {
-    let mut lock = IGNORE_IRQ.lock();
-    if *lock {
-        flush();
-        *lock = false;
-        return;
-    }
-
-    assert!(TYPE2.lock().is_some());
-    dprintln!("PS2Device::{:?} IRQ", TYPE2.lock().clone().unwrap());
-    flush();
+    assert!(TYPE.lock().is_some());
+    dprintln!("PS2Device::{:?} IRQ", TYPE.lock().clone().unwrap());
+    inb(PS2_DATA_PORT);
 }
 
 fn input_buf_clear() -> bool {
@@ -148,10 +130,6 @@ fn send_port1(byte: u8) -> Result<(), ()> {
             outb(PS2_DATA_PORT, byte);
         }
 
-        if byte == PS2_DEVICE_COMMAND_ENABLE_SCANNING {
-            return Ok(());
-        }
-
         if wait_output_buffer_full().is_err() {
             continue;
         }
@@ -163,47 +141,11 @@ fn send_port1(byte: u8) -> Result<(), ()> {
         return Ok(());
     }
 
-    Err(())
-}
-
-fn send_port2(byte: u8) -> Result<(), ()> {
-    for _ in 0..PS2_RETRY_COUNT {
-        if wait_input_buffer_clear().is_err() {
-            continue;
-        }
-
-        if send_command(PS2_COMMAND_PORT2_REDIR).is_err() {
-            continue;
-        }
-
-        if wait_input_buffer_clear().is_err() {
-            continue;
-        }
-
-        if byte == PS2_DEVICE_COMMAND_ENABLE_SCANNING {
-            *IGNORE_IRQ.lock() = true;
-        }
-
-        unsafe {
-            outb(PS2_DATA_PORT, byte);
-        }
-
-        if byte == PS2_DEVICE_COMMAND_ENABLE_SCANNING {
-            return Ok(());
-        }
-
-        if wait_output_buffer_full().is_err() {
-            continue;
-        }
-
-        if unsafe { inb(PS2_DATA_PORT) } != 0xFA {
-            continue;
-        }
-
-        return Ok(());
+    if byte == PS2_DEVICE_COMMAND_ENABLE_SCANNING {
+        Ok(())
+    } else {
+        Err(())
     }
-
-    Err(())
 }
 
 fn test(command: u8, expected: u8) -> Result<(), ()> {
@@ -278,13 +220,8 @@ fn get_type(send_byte: PS2DeviceSend) -> Result<PS2Device, ()> {
 
 pub unsafe fn ps2_init() {
     let mut port1_available: bool = true;
-    let mut port2_available: bool = false;
 
     if send_command(PS2_COMMAND_DISABLE_PORT1).is_err() {
-        initialization_fail!("PS2");
-        return;
-    }
-    if send_command(PS2_COMMAND_DISABLE_PORT2).is_err() {
         initialization_fail!("PS2");
         return;
     }
@@ -296,23 +233,7 @@ pub unsafe fn ps2_init() {
     {
     } else {
         initialization_fail!("PS2");
-    }
-
-    if send_command(PS2_COMMAND_ENABLE_PORT2).is_err() {
-        initialization_fail!("PS2");
-    }
-
-    if let Ok(cf) = get_config_byte()
-        && (cf & (1 << 5)) == 0
-    {
-        port2_available = true;
-        if send_command(PS2_COMMAND_DISABLE_PORT2).is_err() {
-            initialization_fail!("PS2");
-        }
-
-        if set_config_byte(cf & !(1 << 1)).is_err() {
-            initialization_fail!("PS2");
-        }
+        return;
     }
 
     flush();
@@ -323,10 +244,6 @@ pub unsafe fn ps2_init() {
 
     if test(PS2_COMMAND_TEST_PORT1, PS2_TEST_PORT1_SUCCESS).is_err() {
         port1_available = false;
-    }
-
-    if port2_available && test(PS2_COMMAND_TEST_PORT2, PS2_TEST_PORT2_SUCCESS).is_err() {
-        port2_available = false;
     }
 
     if let Ok(mut cf) = get_config_byte() {
@@ -342,7 +259,7 @@ pub unsafe fn ps2_init() {
             }
 
             if let Ok(dev) = get_type(send_port1) {
-                *TYPE1.lock() = Some(dev);
+                *TYPE.lock() = Some(dev);
                 register_irq(1, || unsafe {
                     ps2_port1_irq();
                 });
@@ -352,39 +269,14 @@ pub unsafe fn ps2_init() {
                     return;
                 }
 
+                cf &= !(1 << 4);
                 cf |= 1 << 0;
             }
         }
 
-        if port2_available {
-            if send_command(PS2_COMMAND_ENABLE_PORT2).is_err() {
-                initialization_fail!("PS2");
-                return;
-            }
-
-            if send_port2(PS2_DEVICE_COMMAND_DISABLE_SCANNING).is_err() {
-                initialization_fail!("PS2");
-                return;
-            }
-
-            if let Ok(dev) = get_type(send_port2) {
-                *TYPE2.lock() = Some(dev);
-                register_irq(12, || unsafe {
-                    ps2_port2_irq();
-                });
-
-                if send_port2(PS2_DEVICE_COMMAND_ENABLE_SCANNING).is_err() {
-                    initialization_fail!("PS2");
-                    return;
-                }
-
-                cf |= 1 << 1;
-            }
-
-            if set_config_byte(cf).is_err() {
-                initialization_fail!("PS2");
-                return;
-            }
+        if set_config_byte(cf).is_err() {
+            initialization_fail!("PS2");
+            return;
         }
     } else {
         initialization_fail!("PS2");

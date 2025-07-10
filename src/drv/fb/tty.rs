@@ -1,6 +1,6 @@
-use crate::dprintln;
 use crate::drv::fb::flanterm::{FlantermContext, flanterm_fb_init, flanterm_write};
 use crate::drv::io::mm::fb::Framebuffer;
+use crate::initialized;
 use core::fmt::{self, Arguments, Write};
 
 use core::ffi::c_void;
@@ -37,7 +37,7 @@ impl TTY {
                     null::<c_void>() as *mut c_void,
                     0,
                     0,
-                    1,
+                    0,
                     0,
                     0,
                     0,
@@ -45,7 +45,7 @@ impl TTY {
             },
         };
 
-        dprintln!("Initialized TTY");
+        initialized!("TTY");
         inst
     }
 

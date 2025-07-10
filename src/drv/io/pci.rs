@@ -1,8 +1,7 @@
+use crate::drv::io::ioport::{inl, outl};
+use crate::initialized;
 use alloc::vec::Vec;
 use spin::Mutex;
-
-use crate::initialized;
-use crate::drv::io::ioport::{inl, outl};
 
 const CONFIG_ADDRESS: u16 = 0xCF8;
 const CONFIG_DATA: u16 = 0xCFC;
@@ -23,7 +22,7 @@ pub struct PCIDevice {
     pub cache_line_size: u8,
 }
 
-static PCI_DEVICES: Mutex<Vec<PCIDevice>> = Mutex::new(Vec::new());
+pub static PCI_DEVICES: Mutex<Vec<PCIDevice>> = Mutex::new(Vec::new());
 
 unsafe fn pci_config_read_dword(bus: u8, slot: u8, func: u8, off: u8) -> u32 {
     outl(
