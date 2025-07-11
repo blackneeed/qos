@@ -7,3 +7,4 @@ pub mod pci;
 pub mod pic;
 pub mod ps2;
 pub mod ps2kb;
+pub mod rtl8139;

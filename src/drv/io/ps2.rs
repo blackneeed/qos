@@ -1,7 +1,7 @@
 use crate::drv::io::ioport::{inb, outb};
 use crate::drv::io::ps2kb::ps2_keyboard_irq;
 use crate::tables::idt::register_irq;
-use crate::{dprintln, initialization_fail, initialized};
+use crate::{initialization_fail, initialized};
 use spin::Mutex;
 
 pub const PS2_DATA_PORT: u16 = 0x60;
@@ -78,7 +78,6 @@ fn output_buf_clear() -> bool {
 }
 
 fn wait_input_buffer_clear() -> Result<(), ()> {
-    dprintln!("Polling for input buffer clear");
     for _ in 0..PS2_TIMEOUT {
         if input_buf_clear() {
             return Ok(());
@@ -89,7 +88,6 @@ fn wait_input_buffer_clear() -> Result<(), ()> {
 }
 
 fn wait_output_buffer_full() -> Result<(), ()> {
-    dprintln!("Polling for output buffer full");
     for _ in 0..PS2_TIMEOUT {
         if !output_buf_clear() {
             return Ok(());
@@ -101,7 +99,6 @@ fn wait_output_buffer_full() -> Result<(), ()> {
 
 fn send_command(command: u8) -> Result<(), ()> {
     for _ in 0..PS2_RETRY_COUNT {
-        dprintln!("PS2 Controller: {:#02x}", command);
         if wait_input_buffer_clear().is_ok() {
             unsafe {
                 outb(PS2_COMMAND_PORT, command);
@@ -134,7 +131,6 @@ fn set_config_byte(byte: u8) -> Result<(), ()> {
 
 fn send_port1(byte: u8) -> Result<(), ()> {
     for _ in 0..PS2_RETRY_COUNT {
-        dprintln!("PS2 Port1: {:#02x}", byte);
         if wait_input_buffer_clear().is_err() {
             continue;
         }
@@ -182,7 +178,6 @@ fn test(command: u8, expected: u8) -> Result<(), ()> {
 }
 
 fn flush() {
-    dprintln!("Flushin");
     for _ in 0..PS2_TIMEOUT {
         if !output_buf_clear() {
             unsafe {
