@@ -65,3 +65,17 @@ macro_rules! initialized {
 macro_rules! initialization_fail {
     ($($arg:tt)*) => ($crate::util::kprint::initialization_fail(format_args!($($arg)*)));
 }
+
+#[macro_export]
+macro_rules! display_for_debug {
+    ($type:ty) => {
+        impl core::fmt::Display for $type {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+            where
+                $type: Debug,
+            {
+                core::fmt::Debug::fmt(self, f)
+            }
+        }
+    };
+}

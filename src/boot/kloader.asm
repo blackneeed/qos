@@ -30,7 +30,7 @@ dw 5
 dw 1
 dd multiboot2_fb_tag_end - multiboot2_fb_tag_start
 dd 0
-dd 0
+dd 0 
 dd 32
 multiboot2_fb_tag_end:
 

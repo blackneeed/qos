@@ -3,6 +3,7 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 #![allow(improper_ctypes)]
 #![allow(clippy::missing_safety_doc)]
+#![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::new_without_default)]
 #![allow(clippy::result_unit_err)]
 #![allow(clippy::too_many_arguments)]
