@@ -1,9 +1,8 @@
 use crate::boot::multiboot::{MultibootFramebufferTag, get_tag};
-use crate::kprintln;
-use crate::mem::pmm::memset32;
-
-use alloc::alloc::alloc;
-use core::alloc::Layout;
+//use crate::kprintln;
+//use crate::mem::pmm::memset32;
+//use alloc::alloc::alloc;
+//use core::alloc::Layout;
 
 pub unsafe fn get_framebuffer_tag() -> Option<*const MultibootFramebufferTag> {
     get_tag(8).map(|x| x as *const MultibootFramebufferTag)
@@ -23,7 +22,7 @@ pub struct Framebuffer {
     pub blue_mask_size: u8,
     pub bpp: u8,
     pub bpp_b: u8,
-    pub double_fb: *mut u8,
+    //pub double_fb: *mut u8,
     pub mem_len: u32,
 }
 
@@ -45,43 +44,43 @@ impl Framebuffer {
             return None;
         }
 
-        if let Ok(layout) = Layout::from_size_align(height as usize * pitch as usize, 4) {
-            let double_fb = alloc(layout);
-            if double_fb.is_null() {
-                kprintln!(
-                    "{}:{}: could not allocate double framebuffer",
-                    file!(),
-                    line!()
-                );
-                return None;
-            }
+        //if let Ok(layout) = Layout::from_size_align(height as usize * pitch as usize, 4) {
+        //let double_fb = alloc(layout);
+        //if double_fb.is_null() {
+        //    kprintln!(
+        //        "{}:{}: could not allocate double framebuffer",
+        //        file!(),
+        //        line!()
+        //    );
+        //    return None;
+        //}
 
-            core::ptr::write_bytes(double_fb, 0, height as usize * pitch as usize);
+        //core::ptr::write_bytes(double_fb, 0, height as usize * pitch as usize);
 
-            Some(Framebuffer {
-                width,
-                height,
-                pitch,
-                addr,
-                red_field_pos,
-                red_mask_size,
-                green_field_pos,
-                green_mask_size,
-                blue_field_pos,
-                blue_mask_size,
-                bpp: 32,
-                bpp_b: 4,
-                double_fb,
-                mem_len: height * pitch,
-            })
-        } else {
-            kprintln!(
-                "{}:{}: could not create layout for double framebuffer",
-                file!(),
-                line!()
-            );
-            None
-        }
+        Some(Framebuffer {
+            width,
+            height,
+            pitch,
+            addr,
+            red_field_pos,
+            red_mask_size,
+            green_field_pos,
+            green_mask_size,
+            blue_field_pos,
+            blue_mask_size,
+            bpp: 32,
+            bpp_b: 4,
+            //double_fb,
+            mem_len: height * pitch,
+        })
+        //} else {
+        //    kprintln!(
+        //        "{}:{}: could not create layout for double framebuffer",
+        //        file!(),
+        //        line!()
+        //    );
+        //    None
+        //}
     }
 
     pub unsafe fn from_multiboot() -> Option<Framebuffer> {
@@ -104,44 +103,44 @@ impl Framebuffer {
         }
     }
 
-    #[inline(always)]
-    fn conv_color(&self, value: u8, n: u8) -> u8 {
-        if n == 8 {
-            return value;
-        };
-        ((value as u32 * ((1u32 << n as u32) - 1u32) + 128u32) >> 8) as u8
-    }
+    //#[inline(always)]
+    //fn conv_color(&self, value: u8, n: u8) -> u8 {
+    //    if n == 8 {
+    //        return value;
+    //    };
+    //    ((value as u32 * ((1u32 << n as u32) - 1u32) + 128u32) >> 8) as u8
+    //}
 
-    #[inline(always)]
-    fn color_packed(&self, col: u32) -> u32 {
-        let r = (self.conv_color(((col >> 16) & 0xFF) as u8, self.red_mask_size) as u32)
-            << self.red_field_pos;
-        let g = (self.conv_color(((col >> 8) & 0xFF) as u8, self.green_mask_size) as u32)
-            << self.green_field_pos;
-        let b = (self.conv_color((col & 0xFF) as u8, self.blue_mask_size) as u32)
-            << self.blue_field_pos;
+    //#[inline(always)]
+    //fn color_packed(&self, col: u32) -> u32 {
+    //    let r = (self.conv_color(((col >> 16) & 0xFF) as u8, self.red_mask_size) as u32)
+    //        << self.red_field_pos;
+    //    let g = (self.conv_color(((col >> 8) & 0xFF) as u8, self.green_mask_size) as u32)
+    //        << self.green_field_pos;
+    //    let b = (self.conv_color((col & 0xFF) as u8, self.blue_mask_size) as u32)
+    //        << self.blue_field_pos;
 
-        r | g | b
-    }
+    //    r | g | b
+    //}
 
-    #[inline(always)]
-    unsafe fn get_pixel_ptr(&self, x: u32, y: u32) -> *mut u32 {
-        (self
-            .double_fb
-            .add((y * self.pitch + x * self.bpp_b as u32) as usize)) as *mut u32
-    }
+    //#[inline(always)]
+    //unsafe fn get_pixel_ptr(&self, x: u32, y: u32) -> *mut u32 {
+    //    (self
+    //        .double_fb
+    //        .add((y * self.pitch + x * self.bpp_b as u32) as usize)) as *mut u32
+    //}
 
-    #[inline(always)]
-    pub unsafe fn put_pixel(&self, col: u32, x: u32, y: u32) // 0xAARRGGBB (alpha unhandled)
-    {
-        *self.get_pixel_ptr(x, y) = self.color_packed(col);
-    }
+    //#[inline(always)]
+    //pub unsafe fn put_pixel(&self, col: u32, x: u32, y: u32) // 0xAARRGGBB (alpha unhandled)
+    //{
+    //    *self.get_pixel_ptr(x, y) = self.color_packed(col);
+    //}
 
-    pub unsafe fn draw_line(&mut self, col: u32, w: u32, x: u32, y: u32) {
-        memset32(self.get_pixel_ptr(x, y), self.color_packed(col), w);
-    }
+    //pub unsafe fn draw_line(&mut self, col: u32, w: u32, x: u32, y: u32) {
+    //    memset32(self.get_pixel_ptr(x, y), self.color_packed(col), w);
+    //}
 
-    pub unsafe fn swap(&self) {
-        core::ptr::copy_nonoverlapping(self.double_fb, self.addr, self.mem_len as usize);
-    }
+    //pub unsafe fn swap(&self) {
+    //    core::ptr::copy_nonoverlapping(self.double_fb, self.addr, self.mem_len as usize);
+    //}
 }
