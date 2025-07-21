@@ -12,7 +12,7 @@ pub struct TTY {
 
 impl TTY {
     pub fn new(fb: Framebuffer) -> TTY {
-        let inst = TTY {
+        TTY {
             ft_ctx: unsafe {
                 flanterm_fb_init(
                     None,
@@ -43,10 +43,7 @@ impl TTY {
                     0,
                 )
             },
-        };
-
-        initialized!("TTY");
-        inst
+        }
     }
 
     pub fn write_str(&mut self, string: &str) {
@@ -84,4 +81,5 @@ pub fn initialized() -> bool {
 
 pub fn tty_init(fb: Framebuffer) {
     *TTY_WRITER.lock() = Some(TTY::new(fb));
+    initialized!("TTY");
 }

@@ -27,5 +27,5 @@ mkdir -p build/boot/grub
 cp compiletime/grub.cfg build/boot/grub/grub.cfg
 cp $1 build/boot/qos.elf
 grub-mkrescue build -o qos.iso
-qemu-system-x86_64 -cdrom qos.iso -boot d -d guest_errors -debugcon stdio -serial null -machine q35 -device isa-debug-exit,iobase=0x501,iosize=1 ${FLAGS}
-exit $(($? >> 1)) # holy bash
+qemu-system-x86_64 -cdrom qos.iso -boot d -d guest_errors -debugcon stdio -serial null -machine q35 -device isa-debug-exit,iobase=0x501,iosize=4 ${FLAGS}
+exit $(($? >> 1))
