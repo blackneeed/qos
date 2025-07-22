@@ -31,7 +31,7 @@ impl PCIDevice {
             0x2 => {
                 DetailedPCIDevice::PCItoCardBusBridgeDevice(PCItoCardBusBridgeDevice::fetch(self)) // to my formatter: kys, i dont want this to be in a fucking scope
             }
-            _ => DetailedPCIDevice::Unknown(self.clone()),
+            _ => DetailedPCIDevice::Unknown,
         }
     }
 
@@ -65,14 +65,14 @@ pub enum DetailedPCIDevice<'a> {
     General(GeneralPCIDevice<'a>),
     PCItoPCIBridgeDevice(PCItoPCIBridgeDevice<'a>),
     PCItoCardBusBridgeDevice(PCItoCardBusBridgeDevice<'a>),
-    Unknown(PCIDevice),
+    Unknown,
 }
 
 #[derive(Debug, Clone)]
 pub enum PCIBar {
     Memory(PCIMemoryBar),
     IO(PCIIOBar),
-    Unknown(u32),
+    Unknown,
 }
 
 impl PCIBar {
@@ -82,7 +82,7 @@ impl PCIBar {
         } else if PCIIOBar::is_io(bar) {
             PCIBar::IO(PCIIOBar::from_u32(bar))
         } else {
-            PCIBar::Unknown(bar)
+            PCIBar::Unknown
         }
     }
 }

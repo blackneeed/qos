@@ -5,7 +5,7 @@ use core::fmt::Arguments;
 const DEBUG: bool = true;
 const DEBUG_GLOBAL_EXTRA_KILL_SWITCH: bool = true;
 const DEBUG_PRINT_TTY: bool = true;
-const DEBUG_PRINT_E9: bool = false;
+const DEBUG_PRINT_E9: bool = true;
 
 pub fn kprint(args: Arguments<'_>) {
     e9_print(args);

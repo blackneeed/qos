@@ -1,7 +1,9 @@
 use crate::arch::util::pause;
+use crate::dprintln;
 use crate::drv::io::ioport::{inb, inl, inw, outb, outl, outw};
 use crate::drv::io::pci::{DetailedPCIDevice, GeneralPCIDevice, PCI_DEVICES, PCIBar};
-use crate::kprintln;
+use crate::initialized;
+use crate::tables::idt::register_irq;
 use crate::util::range::BoundExpect;
 use alloc::boxed::Box;
 use core::fmt::Debug;
@@ -11,12 +13,27 @@ use spin::Mutex;
 
 static RTL8139: Mutex<Option<RTL8139>> = Mutex::new(None);
 
+const MAC0_REGISTER: usize = 0x00;
+const MAC1_REGISTER: usize = 0x01;
+const MAC2_REGISTER: usize = 0x02;
+const MAC3_REGISTER: usize = 0x03;
+const MAC4_REGISTER: usize = 0x04;
+const MAC5_REGISTER: usize = 0x05;
+const RBSTART_REGISTER: usize = 0x30;
+const COMMAND_REGISTER: usize = 0x37;
+const CONFIG1_REGISTER: usize = 0x52;
+const IMR_REGISTER: usize = 0x3C;
+const ISR_REGISTER: usize = 0x3E;
+const RCR_REGISTER: usize = 0x44;
+
+const RX_BUFFER_SIZE: usize = 8 * 1024 + 16;
+
 #[derive(Debug, Clone)]
 pub struct RTL8139AccessMechanism<'a> {
     bar: &'a PCIBar,
 }
 
-type RXBuffer = [u8; 8 * 1024 + 16];
+type RXBuffer = [u8; RX_BUFFER_SIZE];
 pub struct MAC(u64);
 
 impl MAC {
@@ -117,7 +134,7 @@ impl<'a> RTL8139AccessMechanism<'a> {
 pub struct RTL8139<'a> {
     pub access: RTL8139AccessMechanism<'a>,
     device: GeneralPCIDevice<'a>,
-    buffer: MaybeUninit<Box<RXBuffer>>,
+    rx_buffer: MaybeUninit<Box<RXBuffer>>,
 }
 
 impl<'a> RTL8139<'a> {
@@ -140,33 +157,64 @@ impl<'a> RTL8139<'a> {
             return None;
         }
 
-        let rtl = RTL8139 {
+        let mut rtl = RTL8139 {
             access: access.clone(),
             device: pci.clone(),
-            buffer: MaybeUninit::uninit(),
+            rx_buffer: MaybeUninit::uninit(),
         };
 
         rtl.init();
         Some(rtl)
     }
 
-    pub fn init(&self) {
+    pub fn init(&mut self) {
         self.enable_bus_mastering();
         self.enable();
         self.reset();
         self.alloc_rx_buffer();
         self.set_rx_buffer();
 
-        kprintln!("{:?}", self.get_mac());
+        // bit 0 = rok
+        // bit 2 = tok
+        self.access.write16(IMR_REGISTER, (1 << 0) | (1 << 2)); // ROK+TOK
+
+        // bit 11-12 = rblen
+        // bit 7 = wrap
+        // bit 3 = ab
+        // bit 2 = am
+        // bit 1 = apm
+        // bit 0 = aap
+        self.access.write32(
+            RCR_REGISTER,
+            (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (0 << 11),
+        ); // AB+AM+APM+AAP RBLEN=00 (8k+16)
+
+        // bit 3 = re
+        // bit 2 = te
+        self.access.write8(COMMAND_REGISTER, (1 << 3) | (1 << 2)); // RE+TE
+
+        unsafe {
+            register_irq(self.device.interrupt_line, |_| {
+                RTL8139
+                    .lock()
+                    .as_ref()
+                    .expect("No RTL8139 when RTL8139 IRQ triggered")
+                    .irq();
+            });
+        }
     }
 
     pub fn enable(&self) {
-        self.access.write8(0x52, 0);
+        self.access.write8(CONFIG1_REGISTER, 0);
     }
 
     pub fn reset(&self) {
-        self.access.write8(0x37, 0x10);
-        while (self.access.read8(0x37) & 0x10) != 0 {
+        // bit 4 = rst
+        self.access.write8(COMMAND_REGISTER, 1 << 4);
+        while (self.access.read8(COMMAND_REGISTER) & (1 << 4)) != 0 {
+            // when the reset is
+            // finished, the rst bit is
+            // set low
             pause();
         }
     }
@@ -177,32 +225,52 @@ impl<'a> RTL8139<'a> {
             .write_command(self.device.base.read_command() | (1 << 2));
     }
 
-    pub fn alloc_rx_buffer(&self) {
-        self.buffer.write(Box::new(RXBuffer));
+    pub fn alloc_rx_buffer(&mut self) {
+        self.rx_buffer.write(Box::new([0; RX_BUFFER_SIZE]));
     }
 
-    pub fn set_rx_buffer(&self) {}
+    pub fn set_rx_buffer(&self) {
+        self.access.write32(
+            RBSTART_REGISTER,
+            (self.rx_buffer.as_ptr() as usize).expect_bound(),
+        );
+    }
 
     pub fn get_mac(&self) -> MAC {
         MAC::from_parts((
-            self.access.read8(0),
-            self.access.read8(1),
-            self.access.read8(2),
-            self.access.read8(3),
-            self.access.read8(4),
-            self.access.read8(5),
+            self.access.read8(MAC0_REGISTER),
+            self.access.read8(MAC1_REGISTER),
+            self.access.read8(MAC2_REGISTER),
+            self.access.read8(MAC3_REGISTER),
+            self.access.read8(MAC4_REGISTER),
+            self.access.read8(MAC5_REGISTER),
         ))
+    }
+
+    pub unsafe fn irq(&self) {
+        dprintln!("RTL8139 IRQ");
+        // bit 0 = rok
+        // bit 2 = tok
+        let status = self.access.read16(ISR_REGISTER);
+
+        if (status & (1 << 0)) != 0 {
+            dprintln!("Reason: ROK");
+        }
+
+        if (status & (1 << 2)) != 0 {
+            dprintln!("Reason: TOK");
+        }
     }
 }
 
 pub unsafe fn rtl8139_init() {
-    let dev = Box::leak(Box::new(PCI_DEVICES.lock().clone()))
+    let rtl8139 = Box::leak(Box::new(PCI_DEVICES.lock().clone()))
         .iter_mut()
-        .find(|x| x.vendor == 0x10ec && x.device == 0x8139);
-
-    if let Some(dev) = dev
+        .find(|x| x.device == 0x8139 && x.vendor == 0x10ec);
+    if let Some(dev) = rtl8139
         && let DetailedPCIDevice::General(dev) = dev.to_detailed_device()
     {
         *RTL8139.lock() = RTL8139::new(dev);
+        initialized!("RTL8139");
     }
 }

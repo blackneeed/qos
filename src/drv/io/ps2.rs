@@ -273,7 +273,7 @@ pub unsafe fn ps2_init() {
 
             if let Ok(dev) = get_type(send_port1) {
                 *TYPE.lock() = Some(dev);
-                register_irq(1, || unsafe {
+                register_irq(1, |_| unsafe {
                     ps2_port1_irq();
                 });
 
