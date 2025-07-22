@@ -42,7 +42,7 @@ static mut IDT: AlignedIDT = AlignedIDT(
     }; 256],
 );
 
-type IRQHashMap = HashMap<u8, unsafe fn()>; // clippy keeps complaining about some complex type bullshit
+type IRQHashMap = HashMap<u8, unsafe fn(u8)>; // clippy keeps complaining about some complex type bullshit
 
 static IDTR: Mutex<Option<IDT32>> = Mutex::new(None);
 static IRQS: Mutex<Option<IRQHashMap>> = Mutex::new(None);
@@ -89,7 +89,7 @@ pub unsafe extern "C" fn interrupt_handler(interrupt_number: u32, _error_code: u
         .unwrap()
         .get(&((interrupt_number - 32) as u8))
     {
-        handler();
+        handler((interrupt_number - 32) as u8);
         core::ptr::write_volatile(
             (LAPIC_ADDR.lock().expect("IRQ sent when LAPIC addr == None") + 0xb0) as *mut u32,
             0,
@@ -125,7 +125,7 @@ pub unsafe fn load_idt() {
     _lidt(&raw const idtr);
 }
 
-pub unsafe fn register_irq(irq: u8, func: unsafe fn()) {
+pub unsafe fn register_irq(irq: u8, func: unsafe fn(u8)) {
     let mut lock = IRQS.lock();
     let val = lock.as_mut().unwrap();
     val.insert(irq, func);

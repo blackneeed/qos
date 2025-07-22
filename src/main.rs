@@ -1,18 +1,21 @@
-#![no_std]
-#![no_main]
-#![allow(unsafe_op_in_unsafe_fn)]
-#![allow(improper_ctypes)]
+// Clippy
 #![allow(clippy::missing_safety_doc)]
+#![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::new_without_default)]
 #![allow(clippy::result_unit_err)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::identity_op)]
-#![feature(proc_macro_hygiene)]
+// Features
 #![feature(fn_traits)]
+#![feature(ascii_char)]
 #![feature(custom_test_frameworks)]
+// Misc
+#![allow(unsafe_op_in_unsafe_fn)]
+#![allow(improper_ctypes)]
 #![reexport_test_harness_main = "test_main"]
 #![test_runner(crate::util::test::runner)]
-#![feature(ascii_char)]
+#![no_std]
+#![no_main]
 
 extern crate alloc;
 
@@ -25,8 +28,6 @@ pub mod util;
 
 use crate::boot::multiboot::MultibootInfo;
 use crate::drv::fb::tty::tty_init;
-use crate::drv::io::ata::ata_init;
-use crate::drv::io::ioport::outl;
 use crate::drv::io::mm::fb::Framebuffer;
 use crate::drv::io::mm::ioapic::ioapic_init;
 use crate::drv::io::mm::lapic::lapic_init;
@@ -40,53 +41,34 @@ use crate::tables::acpi::acpi_init;
 use crate::tables::idt::{initialize_idt, load_idt};
 use crate::util::panic::infhlt;
 use crate::util::sleep::sleep_init;
+use conquer_once::spin::OnceCell;
 use spin::Mutex;
 
-#[derive(Clone, Copy, Debug)]
-pub struct SendablePtr {
-    pub ptr: *const (),
+static MULTIBOOT_INFO: Mutex<OnceCell<&'static MultibootInfo>> = Mutex::new(OnceCell::uninit());
+
+pub fn get_multiboot_info() -> &'static MultibootInfo {
+    MULTIBOOT_INFO.lock().get().unwrap()
 }
 
-unsafe impl Send for SendablePtr {}
-
-static MULTIBOOT_INFO: Mutex<Option<SendablePtr>> = Mutex::new(None);
-
-pub fn get_multiboot_info() -> *const MultibootInfo {
-    let lock = *MULTIBOOT_INFO.lock();
-    match lock {
-        Some(x) => x.ptr as *const MultibootInfo,
-        None => {
-            panic!(
-                "{}:{}: access of multiboot2 pointer via get_multiboot_info() before initialization",
-                file!(),
-                line!()
-            )
-        }
-    }
-}
-
-fn init_multiboot_info(mb2_info: *const MultibootInfo) {
-    *MULTIBOOT_INFO.lock() = Some(SendablePtr {
-        ptr: mb2_info as *const (),
-    });
+fn init_multiboot_info(mb2_info: &'static MultibootInfo) {
+    MULTIBOOT_INFO.lock().try_init_once(|| mb2_info).unwrap()
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
-    init_multiboot_info(mb2_info);
+    init_multiboot_info(&*mb2_info);
     tty_init(Framebuffer::from_multiboot().expect("framebuffer not available"));
     initialize_allocator(get_biggest_usable_pool_multiboot().expect("no usable memory pools"));
     pic_mask_all();
     initialize_idt();
     load_idt();
+    pci_init();
     acpi_init();
     sleep_init();
     lapic_init();
-    pci_init();
     ioapic_init();
-    ps2_init();
-    ata_init();
     rtl8139_init();
+    ps2_init();
     #[cfg(test)]
     test_main();
     infhlt();

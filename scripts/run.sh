@@ -12,7 +12,7 @@ if [ "$GDB" == "true" ]; then
 fi
 
 if [ "$NET" == "true" ]; then
-  FLAGS="${FLAGS} -netdev tap,id=net0,ifname=tap0,script=no,downscript=no -device rtl8139,netdev=net0,mac=12:34:45:67:89:ab" # you need tap0 set up
+  FLAGS="${FLAGS} -netdev user,id=net0 -device rtl8139,netdev=net0,mac=$(python3 scripts/random_mac.py)"
 fi
 
 if [ "$KVM" == "true" ]; then
@@ -27,5 +27,5 @@ mkdir -p build/boot/grub
 cp compiletime/grub.cfg build/boot/grub/grub.cfg
 cp $1 build/boot/qos.elf
 grub-mkrescue build -o qos.iso
-qemu-system-x86_64 -cdrom qos.iso -boot d -d guest_errors -debugcon stdio -serial null -machine q35 -device isa-debug-exit,iobase=0x501,iosize=4 ${FLAGS}
+qemu-system-x86_64 -cdrom qos.iso -debugcon stdio -M q35 ${FLAGS}
 exit $(($? >> 1))

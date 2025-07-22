@@ -84,3 +84,5 @@ bound_expect!(i64);
 bound_expect!(u64);
 bound_expect!(i128);
 bound_expect!(u128);
+bound_expect!(isize);
+bound_expect!(usize);

@@ -24,14 +24,14 @@ pub struct PCIDevice {
 }
 
 impl PCIDevice {
-    pub fn to_detailed_device<'a>(&'a mut self) -> DetailedPCIDevice<'a> {
+    pub fn to_detailed_device<'a>(&'a self) -> DetailedPCIDevice<'a> {
         match self.header_type & !(1 << 7) {
             0x0 => DetailedPCIDevice::General(GeneralPCIDevice::fetch(self)),
             0x1 => DetailedPCIDevice::PCItoPCIBridgeDevice(PCItoPCIBridgeDevice::fetch(self)),
             0x2 => {
-                DetailedPCIDevice::PCItoCardBusBridgeDevice(PCItoCardBusBridgeDevice::fetch(self))
+                DetailedPCIDevice::PCItoCardBusBridgeDevice(PCItoCardBusBridgeDevice::fetch(self)) // to my formatter: kys, i dont want this to be in a fucking scope
             }
-            _ => DetailedPCIDevice::Unknown(self.clone()),
+            _ => DetailedPCIDevice::Unknown,
         }
     }
 
@@ -65,14 +65,14 @@ pub enum DetailedPCIDevice<'a> {
     General(GeneralPCIDevice<'a>),
     PCItoPCIBridgeDevice(PCItoPCIBridgeDevice<'a>),
     PCItoCardBusBridgeDevice(PCItoCardBusBridgeDevice<'a>),
-    Unknown(PCIDevice),
+    Unknown,
 }
 
 #[derive(Debug, Clone)]
 pub enum PCIBar {
     Memory(PCIMemoryBar),
     IO(PCIIOBar),
-    Unknown(u32),
+    Unknown,
 }
 
 impl PCIBar {
@@ -82,7 +82,7 @@ impl PCIBar {
         } else if PCIIOBar::is_io(bar) {
             PCIBar::IO(PCIIOBar::from_u32(bar))
         } else {
-            PCIBar::Unknown(bar)
+            PCIBar::Unknown
         }
     }
 }
@@ -123,9 +123,9 @@ impl PCIIOBar {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GeneralPCIDevice<'a> {
-    pub base: &'a mut PCIDevice,
+    pub base: &'a PCIDevice,
     pub bar0: PCIBar,
     pub bar1: PCIBar,
     pub bar2: PCIBar,
@@ -144,7 +144,7 @@ pub struct GeneralPCIDevice<'a> {
 }
 
 impl<'a> GeneralPCIDevice<'a> {
-    pub fn fetch(dev: &'a mut PCIDevice) -> Self {
+    pub fn fetch(dev: &'a PCIDevice) -> Self {
         let (
             dword16,
             dword20,
@@ -196,24 +196,24 @@ impl<'a> GeneralPCIDevice<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PCItoPCIBridgeDevice<'a> {
-    pub base: &'a mut PCIDevice,
+    pub base: &'a PCIDevice,
 }
 
 impl<'a> PCItoPCIBridgeDevice<'a> {
-    pub fn fetch(dev: &'a mut PCIDevice) -> Self {
+    pub fn fetch(dev: &'a PCIDevice) -> Self {
         Self { base: dev }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PCItoCardBusBridgeDevice<'a> {
-    pub base: &'a mut PCIDevice,
+    pub base: &'a PCIDevice,
 }
 
 impl<'a> PCItoCardBusBridgeDevice<'a> {
-    pub fn fetch(dev: &'a mut PCIDevice) -> Self {
+    pub fn fetch(dev: &'a PCIDevice) -> Self {
         Self { base: dev }
     }
 }

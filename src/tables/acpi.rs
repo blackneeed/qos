@@ -3,7 +3,7 @@ use spin::Mutex;
 
 use crate::boot::multiboot::{MultibootInfoTag, get_tag};
 use crate::drv::io::ioport::outb;
-use crate::{initialized, kprintln, dprintln};
+use crate::{dprintln, initialized, kprintln};
 
 #[repr(C, packed)]
 #[derive(Debug)]
@@ -262,6 +262,15 @@ pub unsafe fn get_fadt() -> Option<&'static FADT> {
     }
 }
 
+pub unsafe fn get_madt() -> Option<(*const u8, usize)> {
+    get_sdt(b"APIC").map(|sdt| {
+        (
+            ((&raw const *sdt) as *const u8).add(core::mem::size_of::<SDT>()),
+            sdt.length as usize - core::mem::size_of::<SDT>(),
+        )
+    })
+}
+
 pub unsafe fn get_hpet() -> Option<&'static HPET> {
     if let Some(sdt) = get_sdt(b"HPET") {
         Some(&*(((&raw const *sdt) as *const u8).add(core::mem::size_of::<SDT>()) as *const HPET))
@@ -289,29 +298,17 @@ pub unsafe fn acpi_init() {
 
     initialized!("FADT");
 
-    if let Some(madt) = get_sdt(b"APIC") {
-        *LAPIC_ADDR.lock() = Some(core::ptr::read_unaligned(
-            ((&raw const *madt) as *const u8)
-                .add(core::mem::size_of::<SDT>())
-                .add(0) as *const u32,
-        ));
+    if let Some((madt, len)) = get_madt() {
+        *LAPIC_ADDR.lock() = Some(core::ptr::read_unaligned(madt.add(0) as *const u32));
 
-        *PICS_INSTALLED.lock() = Some(
-            ((core::ptr::read_unaligned(
-                ((&raw const *madt) as *const u8)
-                    .add(core::mem::size_of::<SDT>())
-                    .add(4) as *const u32,
-            )) & 1)
-                != 0,
-        );
+        *PICS_INSTALLED.lock() =
+            Some(((core::ptr::read_unaligned(madt.add(4) as *const u32)) & 1) != 0);
 
-        let mut address = ((&raw const *madt) as *const u8)
-            .add(core::mem::size_of::<SDT>())
-            .add(8);
+        let mut address = madt.add(8);
 
-        let mut length = core::mem::size_of::<SDT>() as u32 + 8;
+        let mut length = 8;
 
-        while length < madt.length {
+        while length < len {
             let entry_type = *address;
             let entry_length = *address.add(1);
             let entry_address = address.add(2);
@@ -384,7 +381,7 @@ pub unsafe fn acpi_init() {
             }
 
             address = address.add(entry_length as usize);
-            length += entry_length as u32;
+            length += entry_length as usize;
         }
     }
 

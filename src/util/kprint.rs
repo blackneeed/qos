@@ -5,7 +5,7 @@ use core::fmt::Arguments;
 const DEBUG: bool = true;
 const DEBUG_GLOBAL_EXTRA_KILL_SWITCH: bool = true;
 const DEBUG_PRINT_TTY: bool = true;
-const DEBUG_PRINT_E9: bool = false;
+const DEBUG_PRINT_E9: bool = true;
 
 pub fn kprint(args: Arguments<'_>) {
     e9_print(args);
@@ -101,4 +101,18 @@ macro_rules! initialized {
 #[macro_export]
 macro_rules! initialization_fail {
     ($($arg:tt)*) => ($crate::util::kprint::initialization_fail(file!(), line!(), format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! display_for_debug {
+    ($type:ty) => {
+        impl core::fmt::Display for $type {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+            where
+                $type: Debug,
+            {
+                core::fmt::Debug::fmt(self, f)
+            }
+        }
+    };
 }

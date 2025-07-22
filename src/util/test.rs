@@ -1,5 +1,4 @@
 use crate::dprintln;
-use crate::drv::io::ioport::outl;
 use crate::util::panic::_hcf;
 use core::alloc::Layout;
 

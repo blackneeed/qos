@@ -67,8 +67,6 @@ impl IOAPIC {
             redir_entries: entry_count,
         };
 
-        initialized!("IOAPIC{}", madt.id);
-
         let mut lock = IOAPIC_CACHE.lock();
 
         if lock.is_none() {
@@ -192,4 +190,6 @@ pub unsafe fn ioapic_init() {
     for &ioapic in &*IOAPICS.lock() {
         let _ = IOAPIC::new(ioapic);
     }
+
+    initialized!("IOAPIC");
 }
