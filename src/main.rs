@@ -41,10 +41,8 @@ use crate::mem::allocator::initialize_allocator;
 use crate::mem::pmm::get_biggest_usable_pool_multiboot;
 use crate::tables::acpi::acpi_init;
 use crate::tables::idt::{initialize_idt, load_idt};
-use crate::util::misc::{read_volatile_unaligned, write_volatile_unaligned};
 use crate::util::panic::infhlt;
 use crate::util::sleep::sleep_init;
-use alloc::alloc::alloc;
 use conquer_once::spin::OnceCell;
 use spin::Mutex;
 
@@ -75,28 +73,6 @@ pub unsafe extern "C" fn kmain(mb2_info: *const MultibootInfo) {
     ps2_init();
     #[cfg(test)]
     test_main();
-
-    let allocated = alloc(Layout::from_size_align(8, 4).unwrap());
-    kprintln!("Allocated 8 bytes at {:x}", allocated as usize);
-    kprintln!(
-        "Reading u32 at {:x} (not aligned to 4) with read_volatile_unaligned: {:x}",
-        allocated.add(2) as usize,
-        read_volatile_unaligned(allocated.add(2) as *mut u32)
-    );
-
-    kprintln!(
-        "Writing u32 {:x} at {:x} (not aligned to 4) with write_volatile_unaligned",
-        123u32,
-        allocated.add(2) as usize
-    );
-
-    write_volatile_unaligned(allocated.add(2) as *mut u32, 123u32);
-
-    kprintln!(
-        "Reading u32 at {:x} (not aligned to 4) with read_volatile_unaligned: {:x}",
-        allocated.add(2) as usize,
-        read_volatile_unaligned(allocated.add(2) as *mut u32)
-    );
 
     infhlt();
 }
