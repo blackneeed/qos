@@ -3,8 +3,8 @@ use crate::drv::io::e9::{e9_print, e9_println};
 use core::fmt::Arguments;
 
 const DEBUG: bool = true;
-const DEBUG_GLOBAL_EXTRA_KILL_SWITCH: bool = true;
-const DEBUG_PRINT_TTY: bool = true;
+const DEBUG_GLOBAL_EXTRA_KILL_SWITCH: bool = false;
+const DEBUG_PRINT_TTY: bool = false;
 const DEBUG_PRINT_E9: bool = true;
 
 pub fn kprint(args: Arguments<'_>) {
