@@ -1,5 +1,6 @@
 pub mod kernel;
 pub mod kprint;
+pub mod misc;
 pub mod panic;
 pub mod range;
 pub mod sleep;
